@@ -953,7 +953,15 @@ for sIdx = 1, 6 do
                 local temp = cb.spells[idx];
                 cb.spells[idx] = cb.spells[idx - 1];
                 cb.spells[idx - 1] = temp;
+                if cb.clearedSlots then
+                    cb.clearedSlots[idx] = nil;
+                    cb.clearedSlots[idx - 1] = nil;
+                end
                 BordoUI_BuildAdvisor_Refresh();
+                local activeBuild, actClass, actIdx = BordoUI_GetActiveBuild();
+                if actClass == currentClass and actIdx == currentBuildIdx and RefreshChoiceHUD then
+                    RefreshChoiceHUD();
+                end
             end
         end
     end);
@@ -980,7 +988,15 @@ for sIdx = 1, 6 do
                 local temp = cb.spells[idx];
                 cb.spells[idx] = cb.spells[idx + 1];
                 cb.spells[idx + 1] = temp;
+                if cb.clearedSlots then
+                    cb.clearedSlots[idx] = nil;
+                    cb.clearedSlots[idx + 1] = nil;
+                end
                 BordoUI_BuildAdvisor_Refresh();
+                local activeBuild, actClass, actIdx = BordoUI_GetActiveBuild();
+                if actClass == currentClass and actIdx == currentBuildIdx and RefreshChoiceHUD then
+                    RefreshChoiceHUD();
+                end
             end
         end
     end);
@@ -1006,6 +1022,13 @@ for sIdx = 1, 6 do
             cb.clearedSlots = cb.clearedSlots or {};
             cb.clearedSlots[this.sIdx] = true;
             BordoUI_BuildAdvisor_Refresh();
+            local activeBuild, actClass, actIdx = BordoUI_GetActiveBuild();
+            if actClass == currentClass and actIdx == currentBuildIdx and RefreshChoiceHUD then
+                RefreshChoiceHUD();
+            end
+            if catalogDrawer and catalogDrawer:IsShown() and UpdateCatalogDrawerList then
+                UpdateCatalogDrawerList();
+            end
         end
     end);
     clearBtn:Hide();
@@ -1763,9 +1786,34 @@ UpdateCatalogDrawerList = function()
     currentFilteredItems = {};
     if currentDrawerMode == "SPELL" then
         catTabBar:Hide();
+        local cb = GetCustomBuild(currentClass, currentBuildIdx);
+        local slottedSpells = {};
+        if cb and cb.spells then
+            for sl = 1, 6 do
+                if sl ~= currentTargetSlot then
+                    local bsp = cb.spells[sl];
+                    if bsp and bsp.name then
+                        slottedSpells[string.lower(bsp.name)] = true;
+                        local k1 = CanonicalSpellKey(bsp.name);
+                        if k1 ~= "" then slottedSpells[k1] = true; end
+                        if bsp.key then
+                            local k2 = CanonicalSpellKey(bsp.key);
+                            if k2 ~= "" then slottedSpells[k2] = true; end
+                        end
+                    end
+                end
+            end
+        end
+
         local spells = (BordoUI_Catalog and BordoUI_Catalog.Spells and BordoUI_Catalog.Spells[currentClass]) or {};
         for _, s in ipairs(spells) do
-            table.insert(currentFilteredItems, s);
+            local sNameLower = string.lower(s.name or "");
+            local sk1 = CanonicalSpellKey(s.name or "");
+            local sk2 = s.key and CanonicalSpellKey(s.key) or "";
+            local isAlreadySlotted = (slottedSpells[sNameLower] or (sk1 ~= "" and slottedSpells[sk1]) or (sk2 ~= "" and slottedSpells[sk2]));
+            if not isAlreadySlotted then
+                table.insert(currentFilteredItems, s);
+            end
         end
         cTitleText:SetText("SELECT SPELL #" .. currentTargetSlot);
         cSubText:SetText(currentClass .. " Spells (" .. table.getn(currentFilteredItems) .. " available)");
@@ -2947,24 +2995,12 @@ RefreshChoiceHUD = function()
         end
     end
 
-    -- Compile the 5 display spells for the Choice HUD:
-    -- Filter out class starter spells sitting at Slot #5 or #6 (since player already starts with them on bar)
+    -- Compile the 5 display spells for the Choice HUD strictly in user priority order:
     local buildDraftSpells = {};
-    local startersInBuild = {};
     for s = 1, 6 do
         local bsp = activeBuild.spells and activeBuild.spells[s];
         if bsp and bsp.name then
-            local isStarter = bsp.isStarter or IsClassStarter(actClass, bsp.name, bsp.key, bsp.icon);
-            if isStarter then
-                table.insert(startersInBuild, bsp);
-            else
-                table.insert(buildDraftSpells, bsp);
-            end
-        end
-    end
-    for sIdx = 1, table.getn(startersInBuild) do
-        if table.getn(buildDraftSpells) < 5 then
-            table.insert(buildDraftSpells, startersInBuild[sIdx]);
+            table.insert(buildDraftSpells, bsp);
         end
     end
 

@@ -2728,12 +2728,33 @@ function BordoUI_SyncBuildStarters(cb, startersList)
     local numStarters = table.getn(startersList);
     if numStarters <= 0 then return; end
     if numStarters > 6 then numStarters = 6; end
-    local numDraftSlots = 6 - numStarters;
 
+    -- Automatic migration for legacy builds where slots 1..4 are empty and starters sat at slots 5..6:
+    local hasCustomDraft = false;
+    for s = 1, 4 do
+        if cb.spells[s] then
+            hasCustomDraft = true;
+            break;
+        end
+    end
+    if not hasCustomDraft then
+        local bottomStarters = {};
+        for s = 5, 6 do
+            if cb.spells[s] then
+                table.insert(bottomStarters, cb.spells[s]);
+                cb.spells[s] = nil;
+            end
+        end
+        for idx = 1, table.getn(bottomStarters) do
+            cb.spells[idx] = bottomStarters[idx];
+            if cb.clearedSlots then cb.clearedSlots[idx] = nil; end
+        end
+    end
+
+    -- Process each starter spell:
     for i = 1, numStarters do
         local st = startersList[i];
         if st and st.name then
-            local targetSlot = 6 - i + 1;
             local existingSlot = nil;
             for sIdx = 1, 6 do
                 local sp = cb.spells[sIdx];
@@ -2746,51 +2767,32 @@ function BordoUI_SyncBuildStarters(cb, startersList)
                 end
             end
 
-            if not existingSlot and not (cb.clearedSlots and cb.clearedSlots[targetSlot]) then
-                cb.spells[targetSlot] = {
-                    key = st.key or string.lower(string.gsub(st.name, "[%s%p_]", "")),
-                    name = st.name,
-                    icon = st.icon,
-                    school = st.school or "Physical",
-                    prio = targetSlot,
-                    rankMax = 8,
-                    reason = "Class starter ability #" .. i .. " (Action Bar Slot " .. (st.slot or i) .. ")",
-                    isStarter = true,
-                };
-            end
-
-            -- Remove starter duplicates from draft slots 1..numDraftSlots
-            for s = 1, numDraftSlots do
-                local sp = cb.spells[s];
-                if sp and (sp.name == st.name or (sp.key and sp.key == st.key)) then
-                    cb.spells[s] = nil;
+            -- If starter is not anywhere in the build yet, place into slot i (or first open slot):
+            if not existingSlot then
+                local targetSlot = nil;
+                if not cb.spells[i] and not (cb.clearedSlots and cb.clearedSlots[i]) then
+                    targetSlot = i;
+                else
+                    for s = 1, 6 do
+                        if not cb.spells[s] and not (cb.clearedSlots and cb.clearedSlots[s]) then
+                            targetSlot = s;
+                            break;
+                        end
+                    end
                 end
-            end
-        end
-    end
 
-    -- Clear leftover starter flags from draft slots 1..numDraftSlots
-    for s = 1, numDraftSlots do
-        local sp = cb.spells[s];
-        if sp and sp.isStarter then
-            cb.spells[s] = nil;
-        end
-    end
-
-    -- Clear starter slots that are no longer part of current startersList
-    for s = (numDraftSlots + 1), 6 do
-        local sp = cb.spells[s];
-        if sp and sp.isStarter then
-            local matchFound = false;
-            for i = 1, numStarters do
-                local st = startersList[i];
-                if st and (st.name == sp.name or (st.key and st.key == sp.key)) then
-                    matchFound = true;
-                    break;
+                if targetSlot then
+                    cb.spells[targetSlot] = {
+                        key = st.key or string.lower(string.gsub(st.name, "[%s%p_]", "")),
+                        name = st.name,
+                        icon = st.icon,
+                        school = st.school or "Physical",
+                        prio = targetSlot,
+                        rankMax = 8,
+                        reason = "Class starter ability #" .. i .. " (Action Bar Slot " .. (st.slot or i) .. ")",
+                        isStarter = true,
+                    };
                 end
-            end
-            if not matchFound then
-                cb.spells[s] = nil;
             end
         end
     end
