@@ -727,7 +727,8 @@ local base = nil                -- { at = run second, total = damage, [source] =
 local lastSeconds
 
 local function RunSeconds()
-	return (AZS_GetRunTime and AZS_GetRunTime()) or 0
+	local t = (AZS_GetRunTime and AZS_GetRunTime()) or (AZS_RUN and tonumber(AZS_RUN.t)) or 0
+	return tonumber(t) or 0
 end
 
 -- The damage (or healing) a second right now: the view's total as it climbs
@@ -1366,12 +1367,34 @@ local function DamageLines()
 	end
 	lastSeconds = seconds
 	if not base then
-		local shown = {}
+		local shown, sum = {}, 0
 		for index = 1, table.getn(lines) do
 			local line = lines[index]
-			table.insert(shown, { name = line.name or "?", dmg = Num(line.dmg), share = Num(line.share), proc = Num(line.proc) == 1 })
+			local d = Num(line.dmg)
+			sum = sum + d
+			table.insert(shown, { name = line.name or "?", dmg = d, share = Num(line.share), proc = Num(line.proc) == 1 })
 		end
-		return shown, Num(total), Num(dps)
+		total = Num(total)
+		if total <= 0 and sum > 0 then
+			total = sum
+		end
+		dps = Num(dps)
+		if dps <= 0 and total > 0 then
+			local t = RunSeconds()
+			if t and t > 0 then
+				dps = total / t
+			else
+				dps = total
+			end
+		end
+		if sum > 0 then
+			for index = 1, table.getn(shown) do
+				if not shown[index].share or shown[index].share <= 0 then
+					shown[index].share = shown[index].dmg / sum
+				end
+			end
+		end
+		return shown, total, dps
 	end
 
 	local shown, sum = {}, 0
@@ -1389,7 +1412,8 @@ local function DamageLines()
 		shown[index].share = sum > 0 and shown[index].dmg / sum or 0
 	end
 	local span = seconds - base.at
-	return shown, sum, span > 0 and sum / span or 0
+	local resetDps = (span > 0 and sum / span) or sum
+	return shown, sum, resetDps
 end
 
 -- A party's line: its hero's class color and icon (the character
@@ -1528,17 +1552,32 @@ local function OtherLines(get)
 	local fn = get and get()
 	if not fn then return {}, 0, 0 end
 	local lines, total, rate = fn()
-	local shown = {}
+	local shown, sum = {}, 0
 	local isPartyView = (VIEWS[view].key == "party")
 	for index = 1, table.getn(lines or {}) do
 		local line = lines[index]
-		local entry = { name = line.name or "?", dmg = Num(line.dmg), share = Num(line.share), proc = Num(line.proc) == 1 }
+		local d = Num(line.dmg)
+		sum = sum + d
+		local entry = { name = line.name or "?", dmg = d, share = Num(line.share), proc = Num(line.proc) == 1 }
 		if isPartyView or (line.class and line.class ~= "") then
 			PartyLine(entry, line)
 		end
 		table.insert(shown, entry)
 	end
-	return shown, Num(total), Num(rate)
+	total = Num(total)
+	if total <= 0 and sum > 0 then
+		total = sum
+	end
+	rate = Num(rate)
+	if rate <= 0 and total > 0 then
+		local t = RunSeconds()
+		if t and t > 0 then
+			rate = total / t
+		else
+			rate = total
+		end
+	end
+	return shown, total, rate
 end
 
 Draw = function()
@@ -1558,13 +1597,35 @@ Draw = function()
 	else
 		lines, total, dps = OtherLines(VIEWS[view].get)
 	end
+
+	total = Num(total)
+	if total <= 0 and lines and table.getn(lines) > 0 then
+		local calcTot = 0
+		for idx = 1, table.getn(lines) do
+			calcTot = calcTot + (lines[idx].dmg or 0)
+		end
+		if calcTot > 0 then total = calcTot end
+	end
+	dps = Num(dps)
+	if dps <= 0 and total > 0 then
+		local t = RunSeconds()
+		if t and t > 0 then
+			dps = total / t
+		else
+			dps = total
+		end
+	end
+
 	local nowOn = NowOn()
 	LayCells(nowOn and 3 or 2)
 	strip.view = key
 	local unit = key == "healing" and "HPS" or "DPS"
 	if nowOn then
 		local now = NowRate(key, total)
-		SetCell(1, "NOW", now and Short(now) or "...", not now and WHITE or (now >= dps and NOW_UP or NOW_DOWN))
+		if (not now or now <= 0) and dps and dps > 0 then
+			now = dps
+		end
+		SetCell(1, "NOW", (now and now > 0) and Short(now) or "...", (not now or now <= 0) and WHITE or (now >= dps and NOW_UP or NOW_DOWN))
 		SetCell(2, unit, Short(dps), GOLD)
 		SetCell(3, "TOTAL", Short(total), WHITE)
 	else
