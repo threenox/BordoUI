@@ -692,9 +692,9 @@ function BordoUI:ToggleMoveMode(enable)
                         f:ClearAllPoints();
                         f:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
                     elseif ( saveKey == "meterPos" ) then
-                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
+                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5), isCustom = true };
                         BordoUIDB.meterPos = pos;
-                        BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
+                        BordoUIDB.meterIsCustom = true;
                         BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
                     elseif ( saveKey == "chatPos" ) then
                         local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
@@ -749,7 +749,12 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -132 };
     BordoUIDB.choiceAdvisorPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -4 };
     BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 20 };
-    BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 };
+    BordoUIDB.meterPos = nil;
+    BordoUIDB.meterIsCustom = nil;
+    BordoUIDB.meterWidth = nil;
+    BordoUIDB.meterLines = nil;
+    BordoUIDB.meterRight = nil;
+    BordoUIDB.meterBottom = nil;
     BordoUIDB.meterScale = 1.0;
     if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
     if ( AZSHelperDB ) then

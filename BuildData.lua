@@ -2691,6 +2691,61 @@ BordoUI_BuildData.SpellLookup = spellLookup;
 
 -- Universal Racial Abilities Blacklist (WoW 1.12.1 / Turtle WoW - English & German)
 -- Racials MUST NEVER be detected or slotted as class starter abilities or build priorities!
+-- Canonical Spell Keys & Helpers (WoW 1.12.1 / Turtle WoW)
+local SPELL_CANONICAL_KEYS = {
+    ["powerwordshield"]     = "pw_shield",
+    ["power_word_shield"]   = "pw_shield",
+    ["pwshield"]            = "pw_shield",
+    ["pw_shield"]           = "pw_shield",
+
+    ["shadowwordpain"]      = "sw_pain",
+    ["shadow_word_pain"]    = "sw_pain",
+    ["swpain"]              = "sw_pain",
+    ["sw_pain"]             = "sw_pain",
+
+    ["demoralizingshout"]   = "demo_shout",
+    ["demoralizing_shout"]  = "demo_shout",
+    ["demoshout"]           = "demo_shout",
+    ["demo_shout"]          = "demo_shout",
+
+    ["huntersmark"]         = "hunters_mark",
+    ["hunter_mark"]         = "hunters_mark",
+    ["hunters_mark"]        = "hunters_mark",
+    ["huntermark"]          = "hunters_mark",
+
+    ["soulfire"]            = "soul_fire",
+    ["soul_fire"]           = "soul_fire",
+
+    ["judgment"]            = "judgement",
+    ["judgement"]           = "judgement",
+};
+
+local function CanonicalSpellKey(str)
+    if not str then return ""; end
+    local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
+    return SPELL_CANONICAL_KEYS[clean] or clean;
+end
+
+local function NormalizeIconPath(p)
+    if not p then return ""; end
+    return string.gsub(tostring(p), "/", "\\");
+end
+
+local function IconsMatch(iconA, iconB)
+    if not (iconA and iconB) then return false; end
+    local sA = string.lower(NormalizeIconPath(iconA));
+    local sB = string.lower(NormalizeIconPath(iconB));
+    if sA == sB then return true; end
+    local _, _, fileA = string.find(sA, "([^\\\\]+)$");
+    fileA = fileA or sA;
+    local _, _, fileB = string.find(sB, "([^\\\\]+)$");
+    fileB = fileB or sB;
+    if fileA ~= "" and fileA ~= "inv_misc_questionmark" and fileA == fileB then
+        return true;
+    end
+    return false;
+end
+
 local RACIAL_SPELLS = {
     ["BLOOD FURY"] = true,
     ["BERSERKING"] = true,
@@ -3072,39 +3127,39 @@ function BordoUI_SetActiveBuild(classKey, buildIdx)
     return nil;
 end
 
-local SPELL_CANONICAL_KEYS = {
-    ["powerwordshield"]     = "pw_shield",
-    ["power_word_shield"]   = "pw_shield",
-    ["pwshield"]            = "pw_shield",
-    ["pw_shield"]           = "pw_shield",
-
-    ["shadowwordpain"]      = "sw_pain",
-    ["shadow_word_pain"]    = "sw_pain",
-    ["swpain"]              = "sw_pain",
-    ["sw_pain"]             = "sw_pain",
-
-    ["demoralizingshout"]   = "demo_shout",
-    ["demoralizing_shout"]  = "demo_shout",
-    ["demoshout"]           = "demo_shout",
-    ["demo_shout"]          = "demo_shout",
-
-    ["huntersmark"]         = "hunters_mark",
-    ["hunter_mark"]         = "hunters_mark",
-    ["hunters_mark"]        = "hunters_mark",
-    ["huntermark"]          = "hunters_mark",
-
-    ["soulfire"]            = "soul_fire",
-    ["soul_fire"]           = "soul_fire",
-
-    ["judgment"]            = "judgement",
-    ["judgement"]           = "judgement",
-};
-
-local function CanonicalSpellKey(str)
-    if not str then return ""; end
-    local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
-    return SPELL_CANONICAL_KEYS[clean] or clean;
-end
+-- [moved to top] local SPELL_CANONICAL_KEYS = {
+-- [moved to top]     ["powerwordshield"]     = "pw_shield",
+-- [moved to top]     ["power_word_shield"]   = "pw_shield",
+-- [moved to top]     ["pwshield"]            = "pw_shield",
+-- [moved to top]     ["pw_shield"]           = "pw_shield",
+-- [moved to top] 
+-- [moved to top]     ["shadowwordpain"]      = "sw_pain",
+-- [moved to top]     ["shadow_word_pain"]    = "sw_pain",
+-- [moved to top]     ["swpain"]              = "sw_pain",
+-- [moved to top]     ["sw_pain"]             = "sw_pain",
+-- [moved to top] 
+-- [moved to top]     ["demoralizingshout"]   = "demo_shout",
+-- [moved to top]     ["demoralizing_shout"]  = "demo_shout",
+-- [moved to top]     ["demoshout"]           = "demo_shout",
+-- [moved to top]     ["demo_shout"]          = "demo_shout",
+-- [moved to top] 
+-- [moved to top]     ["huntersmark"]         = "hunters_mark",
+-- [moved to top]     ["hunter_mark"]         = "hunters_mark",
+-- [moved to top]     ["hunters_mark"]        = "hunters_mark",
+-- [moved to top]     ["huntermark"]          = "hunters_mark",
+-- [moved to top] 
+-- [moved to top]     ["soulfire"]            = "soul_fire",
+-- [moved to top]     ["soul_fire"]           = "soul_fire",
+-- [moved to top] 
+-- [moved to top]     ["judgment"]            = "judgement",
+-- [moved to top]     ["judgement"]           = "judgement",
+-- [moved to top] };
+-- [moved to top] 
+-- [moved to top] local function CanonicalSpellKey(str)
+-- [moved to top]     if not str then return ""; end
+-- [moved to top]     local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
+-- [moved to top]     return SPELL_CANONICAL_KEYS[clean] or clean;
+-- [moved to top] end
 
 -- Checks if a spell (by key or name) belongs to the currently active build
 -- Returns: isMatch (bool), priority (number 1-6), spellData (table)

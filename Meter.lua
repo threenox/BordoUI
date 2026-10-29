@@ -138,24 +138,36 @@ function BordoUI_GetMeterScale()
 	return (BordoUIDB and BordoUIDB.meterScale) or 1.0
 end
 
+local currentWidth = WIDTH
+local isMeterDragging = false
+local isMeterSizing = false
+local seatedOn
+local Draw -- forward declaration
+
 local function SavePlace()
 	local right = meter:GetRight()
 	local bottom = meter:GetBottom()
 	if not (right and bottom) then return end
 	local uRight = (UIParent and UIParent:GetRight()) or 1024
+	local uBottom = (UIParent and UIParent:GetBottom()) or 0
 	local offsetX = math.floor((right - uRight) + 0.5)
-	local offsetY = math.floor(bottom + 0.5)
-	if offsetY < 20 then offsetY = 20 end
-	if offsetX > -5 then offsetX = -5 end
-	local pos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = offsetX, y = offsetY }
+	local offsetY = math.floor((bottom - uBottom) + 0.5)
+	if offsetX > 0 then offsetX = 0 end
+	if offsetY < 0 then offsetY = 0 end
+
+	local pos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = offsetX, y = offsetY, isCustom = true }
 	BordoUIDB = BordoUIDB or {}
 	BordoUIDB.meterPos = pos
+	BordoUIDB.meterIsCustom = true
 	local settings = Settings()
-	settings.meterPos = pos
-	settings.meterRight = math.floor(right + 0.5)
-	settings.meterBottom = math.floor(bottom + 0.5)
-	BordoUIDB.meterRight = settings.meterRight
-	BordoUIDB.meterBottom = settings.meterBottom
+	if settings then
+		settings.meterPos = pos
+		settings.meterRight = math.floor(right + 0.5)
+		settings.meterBottom = math.floor(bottom + 0.5)
+	end
+	BordoUIDB.meterRight = math.floor(right + 0.5)
+	BordoUIDB.meterBottom = math.floor(bottom + 0.5)
+	seatedOn = "custom_" .. offsetX .. "_" .. offsetY
 	meter:ClearAllPoints()
 	meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", offsetX, offsetY)
 end
@@ -169,11 +181,38 @@ local function SetLines(count)
 	end
 end
 
+local function UpdateMeterWidth(newWidth)
+	if not newWidth or newWidth < 120 then
+		newWidth = WIDTH
+	end
+	currentWidth = newWidth
+	NAME_ROOM = currentWidth - BAR_HEIGHT - 2 - (AMOUNT_RIGHT + AMOUNT_WIDTH + 2) - 4
+	meter:SetWidth(currentWidth + 8)
+	if strip then
+		strip:SetWidth(currentWidth)
+		if strip.count then
+			local c = strip.count
+			strip.count = nil
+			LayCells(c)
+		end
+	end
+	for index = 1, table.getn(bars or {}) do
+		local b = bars[index]
+		if b then
+			b:SetWidth(currentWidth)
+			b.edgeWidth = nil
+			local room = NAME_ROOM - ((b.line and b.line.proc) and 30 or 0)
+			b.room = room
+			b.name:SetWidth(room)
+		end
+	end
+end
+
 -- Resize Corner Grip (Bottom-Right)
 meter:SetResizable(true)
 if meter.SetMinResize then
-	meter:SetMinResize(140, 60)
-	meter:SetMaxResize(450, 600)
+	meter:SetMinResize(160, 60)
+	meter:SetMaxResize(480, 600)
 end
 
 local meterResizeGrip = CreateFrame("Button", "BordoUIMeterResizeGrip", meter)
@@ -194,13 +233,12 @@ for rIdx = 1, 3 do
 	table.insert(meterResizeGrip.lines, line)
 end
 
-local isMeterSizing = false
 meterResizeGrip:SetScript("OnEnter", function()
 	GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT")
 	GameTooltip:SetText("Resize Damage Meter", 1, 0.82, 0)
 	GameTooltip:AddDoubleLine("Current Scale:", string.format("%d%%", math.floor(BordoUI_GetMeterScale() * 100 + 0.5)), 1, 1, 1, 0.2, 1, 0.2)
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine("Left-Click Drag: Resize window height", 0.75, 0.75, 0.75)
+	GameTooltip:AddLine("Left-Click Drag: Resize window width & height", 0.75, 0.75, 0.75)
 	GameTooltip:AddLine("Ctrl / Alt + Mouse Wheel: Smooth scale window", 0.75, 0.75, 0.75)
 	GameTooltip:AddLine("Right-Click: Reset to default size & scale", 0.85, 0.85, 0.3)
 	GameTooltip:Show()
@@ -210,9 +248,15 @@ meterResizeGrip:SetScript("OnLeave", function()
 end)
 meterResizeGrip:SetScript("OnClick", function()
 	if arg1 == "RightButton" then
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.meterWidth = nil
+		BordoUIDB.meterLines = nil
+		BordoUIDB.meterScale = 1.0
 		BordoUI_SetMeterScale(1.0)
+		UpdateMeterWidth(WIDTH)
 		SetLines(MAX_LINES)
 		SavePlace()
+		if Draw then Draw() end
 		PlaySound("igMainMenuOptionCheckBoxOn")
 		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default size (100%).")
 	end
@@ -228,15 +272,38 @@ meterResizeGrip:SetScript("OnMouseUp", function()
 	if isMeterSizing then
 		isMeterSizing = false
 		meter:StopMovingOrSizing()
+		local w = meter:GetWidth()
+		if w and w >= 160 then
+			UpdateMeterWidth(w - 8)
+			BordoUIDB = BordoUIDB or {}
+			BordoUIDB.meterWidth = w
+		end
 		local h = meter:GetHeight()
 		local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
 		fitLines = math.max(3, math.min(MAX_LINES, fitLines))
 		SetLines(fitLines)
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.meterLines = fitLines
 		SavePlace()
+		if Draw then Draw() end
 	end
 end)
 
-local seatedOn
+meter:SetScript("OnSizeChanged", function()
+	if isMeterSizing then
+		local w = meter:GetWidth()
+		if w and w >= 160 then
+			UpdateMeterWidth(w - 8)
+		end
+		local h = meter:GetHeight()
+		if h and h >= 50 then
+			local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+			fitLines = math.max(3, math.min(MAX_LINES, fitLines))
+			SetLines(fitLines)
+		end
+		if Draw then Draw() end
+	end
+end)
 
 local function Seat(key, point, relative, relativePoint, x, y)
 	if seatedOn ~= key then
@@ -247,36 +314,49 @@ local function Seat(key, point, relative, relativePoint, x, y)
 end
 
 local function Fit()
+	if isMeterDragging or isMeterSizing then
+		return
+	end
 	local settings = Settings()
 	local pos = (BordoUIDB and BordoUIDB.meterPos) or (settings and settings.meterPos)
-	if pos and pos.point then
-		if pos.y and pos.y < 10 then
-			pos.point = "BOTTOMRIGHT"
-			pos.relativePoint = "BOTTOMRIGHT"
-			pos.x = -12
-			pos.y = 40
-		end
-		Seat("savedPos", pos.point, UIParent, pos.relativePoint or pos.point, pos.x, pos.y)
-		SetLines(shownLines or MAX_LINES)
+	local isCustom = (BordoUIDB and BordoUIDB.meterIsCustom) or (pos and pos.isCustom)
+
+	-- 1. Custom User Position: stick to user's coordinates!
+	if isCustom and pos and pos.point then
+		local x = pos.x or -12
+		local y = pos.y or 40
+		Seat("custom_" .. x .. "_" .. y, pos.point, UIParent, pos.relativePoint or pos.point, x, y)
+		SetLines((BordoUIDB and BordoUIDB.meterLines) or shownLines or MAX_LINES)
 		return
 	end
-	if settings and settings.meterRight and settings.meterBottom and settings.meterBottom >= 20 then
-		Seat("saved"..settings.meterRight..","..settings.meterBottom, "BOTTOMRIGHT", UIParent, "BOTTOMLEFT", settings.meterRight, settings.meterBottom)
-		SetLines(shownLines or MAX_LINES)
+
+	-- 2. Default: Dock directly underneath SurvivorUIBuild
+	local build, tracker = SurvivorUIBuild, SurvivorUITracker
+	local above, shift = nil, 0
+	if build and build:IsShown() and build:GetBottom() then
+		above = build
+	elseif tracker and tracker:GetBottom() then
+		above, shift = tracker, 8
+	end
+	if not above then
+		Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
+		SetLines((BordoUIDB and BordoUIDB.meterLines) or shownLines or MAX_LINES)
 		return
 	end
-	Seat("screen", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
-	SetLines(shownLines or MAX_LINES)
+	Seat("docked_" .. above:GetName(), "TOPRIGHT", above, "BOTTOMRIGHT", shift, -10)
+	SetLines((BordoUIDB and BordoUIDB.meterLines) or shownLines or MAX_LINES)
 end
 
 local function StartMove()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		isMeterDragging = true
 		meter:StartMoving()
 	end
 end
 
 local function StopMove()
 	meter:StopMovingOrSizing()
+	isMeterDragging = false
 	SavePlace()
 end
 
@@ -526,7 +606,7 @@ local NOW_WINDOW = 5
 
 local strip = CreateFrame("Frame", nil, meter)
 strip:SetPoint("TOPLEFT", meter, "TOPLEFT", 4, -STRIP_TOP)
-strip:SetWidth(WIDTH)
+strip:SetWidth(currentWidth)
 strip:SetHeight(STRIP_HEIGHT)
 strip:EnableMouse(true)
 strip:RegisterForDrag("LeftButton")
@@ -565,7 +645,7 @@ local function LayCells(count)
 		return
 	end
 	strip.count = count
-	local each = WIDTH / count
+	local each = currentWidth / count
 	for index = 1, 3 do
 		local cell = strip.cells[index]
 		cell.label:ClearAllPoints()
@@ -1095,18 +1175,18 @@ end
 local SHARE_WIDTH = 30
 local AMOUNT_WIDTH = 44
 local AMOUNT_RIGHT = SHARE_WIDTH + 6
-local NAME_ROOM = WIDTH - BAR_HEIGHT - 2 - (AMOUNT_RIGHT + AMOUNT_WIDTH + 2) - 4
+local NAME_ROOM = currentWidth - BAR_HEIGHT - 2 - (AMOUNT_RIGHT + AMOUNT_WIDTH + 2) - 4
 
 -- The filled part never shorter than the icon's square, so the source's
 -- color goes round its icon, as in the build list, however small its share.
 local function Filled(share)
-	return math.max(BAR_HEIGHT / WIDTH, share)
+	return math.max(BAR_HEIGHT / currentWidth, share)
 end
 
 -- The edge around the bar's filled part only: its top and bottom as long as
 -- the fill, its right side at the fill's end (edges: top, bottom, left, right).
 local function PlaceEdges(bar, share)
-	local width = math.max(2, math.floor(WIDTH * Filled(share) + 0.5))
+	local width = math.max(2, math.floor(currentWidth * Filled(share) + 0.5))
 	if bar.edgeWidth == width then
 		return
 	end
@@ -1129,7 +1209,7 @@ local function Bar(index)
 		return bar
 	end
 	bar = CreateFrame("StatusBar", nil, meter)
-	bar:SetWidth(WIDTH)
+	bar:SetWidth(currentWidth)
 	bar:SetHeight(BAR_HEIGHT)
 	bar:SetStatusBarTexture(FLAT)
 	bar:SetMinMaxValues(0, 1)
@@ -1669,10 +1749,15 @@ function BordoUI_ToggleMeter()
 	settings.meter = newState
 
 	if newState then
-		if not BordoUIDB.meterPos or (BordoUIDB.meterPos.y and BordoUIDB.meterPos.y < 10) then
-			BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 }
+		if BordoUIDB.meterIsCustom and BordoUIDB.meterPos then
+			BordoUI:RestorePosition(meter, BordoUIDB.meterPos)
+		else
+			seatedOn = nil
+			Fit()
 		end
-		BordoUI:RestorePosition(meter, BordoUIDB.meterPos)
+		if BordoUIDB.meterWidth then
+			UpdateMeterWidth(BordoUIDB.meterWidth - 8)
+		end
 		if BordoUIDB.meterScale then
 			meter:SetScale(BordoUIDB.meterScale)
 		end
@@ -1701,13 +1786,25 @@ end
 
 function BordoUI_ResetMeterPosition()
 	BordoUIDB = BordoUIDB or {}
-	BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 }
+	BordoUIDB.meterPos = nil
+	BordoUIDB.meterIsCustom = nil
+	BordoUIDB.meterWidth = nil
+	BordoUIDB.meterLines = nil
+	BordoUIDB.meterRight = nil
+	BordoUIDB.meterBottom = nil
 	BordoUIDB.meterScale = 1.0
+	local settings = Settings()
+	if settings then
+		settings.meterPos = nil
+		settings.meterRight = nil
+		settings.meterBottom = nil
+	end
+	seatedOn = nil
 	if meter then
-		meter:ClearAllPoints()
-		meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
 		meter:SetScale(1.0)
+		UpdateMeterWidth(WIDTH)
 		SetLines(MAX_LINES)
+		Fit()
 	end
 end
 
@@ -1760,6 +1857,14 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function()
 	seatedOn = nil
+	if BordoUIDB and BordoUIDB.meterWidth then
+		UpdateMeterWidth(BordoUIDB.meterWidth - 8)
+	else
+		UpdateMeterWidth(WIDTH)
+	end
+	if BordoUIDB and BordoUIDB.meterLines then
+		SetLines(BordoUIDB.meterLines)
+	end
 	if BordoUIDB and BordoUIDB.meterScale then
 		BordoUI_SetMeterScale(BordoUIDB.meterScale)
 	end

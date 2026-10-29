@@ -708,7 +708,7 @@ PickupAction = function(slot)
 end
 
 if SetCVar then
-	SetCVar("lockActionBars", "1")
+	pcall(SetCVar, "lockActionBars", "1")
 end
 LOCK_ACTIONBAR = "1"
 -- =========================================================================
