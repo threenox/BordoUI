@@ -1044,6 +1044,12 @@ UI.tallyFrame:SetScript("OnDragStop", function()
 	local pt, _, relPt, x, y = UI.tallyFrame:GetPoint()
 	BordoUIDB.tallyPos = { point = pt, relativePoint = relPt, x = x, y = y }
 end)
+UI.tallyFrame:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+end)
+UI.tallyFrame:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+end)
 if ( BordoUI and BordoUI.AttachLockButton ) then
 	BordoUI:AttachLockButton(UI.tallyFrame, "LEFT", UI.tallyFrame, "RIGHT", 4, 0)
 end
@@ -1359,6 +1365,12 @@ UI.encounterContainer:SetFrameStrata("MEDIUM")
 UI.encounterContainer:SetFrameLevel(25)
 UI.encounterContainer:SetClampedToScreen(true)
 AZSHelper:MakeMovable(UI.encounterContainer, "encounterBarsPos")
+UI.encounterContainer:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+end)
+UI.encounterContainer:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+end)
 UI.encounterContainer:Hide()
 
 UI.encounterBars = {}
@@ -1390,6 +1402,12 @@ for i = 1, 6 do
 		local pt, _, relPt, x, y = UI.encounterContainer:GetPoint()
 		BordoUIDB = BordoUIDB or {}
 		BordoUIDB.encounterBarsPos = { point = pt, relativePoint = relPt, x = x, y = y }
+	end)
+	bar:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+	end)
+	bar:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
 	end)
 
 	local sb = CreateFrame("StatusBar", nil, bar)
@@ -2006,9 +2024,21 @@ function AZSHelper:SkinChatWindow()
 
 	chatHeader:SetScript("OnDragStart", StartChatDrag)
 	chatHeader:SetScript("OnDragStop", StopChatDrag)
+	chatHeader:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+	end)
+	chatHeader:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+	end)
 
 	chatBox:SetScript("OnDragStart", StartChatDrag)
 	chatBox:SetScript("OnDragStop", StopChatDrag)
+	chatBox:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+	end)
+	chatBox:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+	end)
 
 	if ( BordoUI and BordoUI.AttachLockButton ) then
 		BordoUI:AttachLockButton(chatBox, "TOPRIGHT", chatHeader, "TOPRIGHT", -4, -3)

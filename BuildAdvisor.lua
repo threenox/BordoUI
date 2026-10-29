@@ -2405,6 +2405,16 @@ choiceHUD:SetScript("OnDragStop", function()
     BordoUIDB = BordoUIDB or {};
     BordoUIDB.choiceAdvisorPos = { pt = pt, relPt = relPt, x = x, y = y };
 end);
+choiceHUD:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+choiceHUD:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
 
 RegisterOnTopOfScreens();
 
@@ -2416,6 +2426,16 @@ hudHeaderBar:SetPoint("TOPRIGHT", choiceHUD, "TOPRIGHT", -8, -3);
 hudHeaderBar:EnableMouse(true);
 hudHeaderBar:SetScript("OnEnter", function()
     if GameTooltip then GameTooltip:Hide(); end
+end);
+hudHeaderBar:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+hudHeaderBar:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
 end);
 
 local hudTag = hudHeaderBar:CreateFontString(nil, "OVERLAY"); AUI.hudTag = hudTag;

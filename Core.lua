@@ -146,6 +146,16 @@ function BordoUI:MakeMovable(frame, saveKey, callback)
             callback(this);
         end
     end);
+    frame:SetScript("OnMouseDown", function()
+        if arg1 == "RightButton" and MouselookStart then
+            MouselookStart();
+        end
+    end);
+    frame:SetScript("OnMouseUp", function()
+        if arg1 == "RightButton" and MouselookStop then
+            MouselookStop();
+        end
+    end);
 end
 function BordoUI:RestorePosition(frame, posData)
     if ( frame and posData and posData.point ) then
@@ -424,7 +434,17 @@ SlashCmdList["BORDOU"] = function(msg)
             SlashCmdList["BORDOBUILDGUIDE"]("test");
         end
     elseif ( cmd == "meter" or cmd == "dps" ) then
-        if ( BordoUI_ToggleMeter ) then
+        if ( val and string.find(val, "scale") ) then
+            local _, _, sVal = string.find(val, "scale%s+(%S+)");
+            local num = tonumber(sVal);
+            if num and BordoUI_SetMeterScale then
+                if num > 10 then num = num / 100; end
+                BordoUI_SetMeterScale(num);
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter scale set to " .. math.floor(num * 100 + 0.5) .. "%.");
+            else
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: |cffffd100/bordo meter scale 0.8|r (55% to 160%).");
+            end
+        elseif ( BordoUI_ToggleMeter ) then
             BordoUI_ToggleMeter();
         elseif ( SurvivorUI_ToggleMeter ) then
             SurvivorUI_ToggleMeter();
@@ -447,6 +467,30 @@ end;
 SLASH_BORDOUNLOCK1 = "/unlock";
 SlashCmdList["BORDOUNLOCK"] = function()
     BordoUI:SetLocked(false);
+end;
+SLASH_BORDOMETER1 = "/meter";
+SLASH_BORDOMETER2 = "/dps";
+SlashCmdList["BORDOMETER"] = function(msg)
+    local cmd = string.lower(msg or "");
+    local _, _, sub, arg = string.find(cmd, "%s*(%S+)%s*(%S*)");
+    if ( sub == "scale" and arg and arg ~= "" ) then
+        local num = tonumber(arg);
+        if num and BordoUI_SetMeterScale then
+            if num > 10 then num = num / 100; end
+            BordoUI_SetMeterScale(num);
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter scale set to " .. math.floor(num * 100 + 0.5) .. "%.");
+        end
+    elseif ( sub == "reset" ) then
+        if BordoUI_ResetMeterPosition then BordoUI_ResetMeterPosition(); end
+        if BordoUI_ResetMeter then BordoUI_ResetMeter(); end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter position and data reset.");
+    else
+        if BordoUI_ToggleMeter then
+            BordoUI_ToggleMeter();
+        elseif SurvivorUI_ToggleMeter then
+            SurvivorUI_ToggleMeter();
+        end
+    end
 end;
 SLASH_BORDOPLATES1 = "/plates";
 SlashCmdList["BORDOPLATES"] = function(msg)
@@ -705,6 +749,9 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -132 };
     BordoUIDB.choiceAdvisorPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -4 };
     BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 20 };
+    BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 };
+    BordoUIDB.meterScale = 1.0;
+    if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = defaultHudPos;
         AZSHelperDB.centerHudPos = defaultHudPos;

@@ -138,6 +138,26 @@ headerBar:SetScript("OnDragStop", function()
         BordoUIDB.statsPos = { point = point, relativePoint = relPoint, x = x, y = y };
     end
 end);
+headerBar:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+headerBar:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
+frame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+frame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
 local titleText = headerBar:CreateFontString(nil, "OVERLAY");
 titleText:SetFont(FONT_PATH, 12, "OUTLINE");
 titleText:SetPoint("TOPLEFT", headerBar, "TOPLEFT", 8, -6);
@@ -424,6 +444,16 @@ critFrame:SetScript("OnDragStop", function()
     critFrame:StopMovingOrSizing();
     SaveCritPosition();
 end);
+critFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+critFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
 
 -- Header Bar
 local critHeader = CreateFrame("Frame", nil, critFrame);
@@ -440,6 +470,16 @@ end);
 critHeader:SetScript("OnDragStop", function()
     critFrame:StopMovingOrSizing();
     SaveCritPosition();
+end);
+critHeader:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+critHeader:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
 end);
 
 local critTitle = critHeader:CreateFontString(nil, "OVERLAY");

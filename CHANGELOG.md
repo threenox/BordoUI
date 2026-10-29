@@ -4,6 +4,26 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.3.6] - 2026-10-29
+
+### Fixed & Improved
+- **Damage Meter Vanishing & Off-Screen Coordinate Trap Fixed (`Meter.lua`, `Core.lua`):**
+  - Resolved the critical bug where clicking or releasing mouse on the Damage Meter caused `SavePlace()` to grab relative offsets from `SurvivorUIBuild` and re-anchor to `UIParent` at `y = -10`, banishing the meter completely off-screen below the physical monitor.
+  - Re-engineered `SavePlace()` with robust screen-relative calculations (`offsetX = right - UIParent:GetRight()`, `offsetY = bottom`) with strict lower-bound boundary enforcement (`offsetY >= 20`) preventing off-screen positioning under any circumstance.
+  - Implemented automatic position sanitization in `Fit()` so any previously corrupted negative coordinates are immediately corrected to the safe default (`BOTTOMRIGHT, UIParent, -12, 40`).
+  - Integrated Damage Meter reset into `BordoUI:ResetToDefaultLayout()`, ensuring "Reset Default Layout" in move mode immediately restores the meter to its default position.
+- **Damage Meter Visibility & Minimap Dock Toggle (`Meter.lua`, `ThemeUI.lua`):**
+  - Implemented global `BordoUI_ToggleMeter()`, ensuring clicking the Minimap dock sword button reliably toggles the damage meter on/off anytime.
+  - Removed restrictive `Running()` check that previously forced the meter to auto-hide when not in active combat, allowing players to view recent run data, prepare builds, or position the meter before moving.
+- **Damage Meter Resizing & Smooth Scaling Engine (`Meter.lua`, `Core.lua`):**
+  - Added sleek gold corner resize grip (`meterResizeGrip`) to the bottom-right corner of the Damage Meter. Left-click dragging resizes the meter's height and dynamically adjusts the visible row count (3 to 10 rows). Right-clicking the grip resets to default size (100% scale, 10 rows).
+  - Added smooth mousewheel scaling: holding `Ctrl`, `Alt`, or `Shift` while scrolling over the meter (or mouse wheeling over the title button) smoothly scales the entire meter (55% to 160%).
+  - Added slash command `/bordo meter scale <val>` and `/meter scale <val>` (e.g. `/meter scale 0.85` or `/meter scale 120`).
+  - Added `/meter reset` command.
+- **Universal Right-Click Camera Pass-Through Across Locked Elements (`ThemeUI.lua`, `BuildAdvisor.lua`, `BossTracker.lua`, `BuildList.lua`, `StatsWindow.lua`, `Core.lua`):**
+  - Implemented native `MouselookStart()` on `OnMouseDown` and `MouselookStop()` on `OnMouseUp` for right clicks across `AZSHelper_BossEncounterContainer` and all 6 boss HP bars, `BordoUI_ChoiceAdvisorHUD`, `BordoUIMeter`, `BordoUI_BossTrackerFrame`, `SurvivorUIBuild`, `BordoUI_StatsWindowFrame`, and `BordoUI_ChatBox`.
+  - Players can now seamlessly right-click drag their camera even when the cursor is over notification frames, boss encounter bars, or UI elements without the camera locking up or encountering hitboxes.
+
 ## [2.3.4] - 2026-10-29
 
 ### Added

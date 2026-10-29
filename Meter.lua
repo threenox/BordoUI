@@ -111,22 +111,53 @@ if BordoUI and BordoUI.AttachLockButton then
 	BordoUI:AttachLockButton(meter, "TOPRIGHT", meter, "TOPRIGHT", -4, -2)
 end
 
-local function SavePlace()
-	local settings = Settings()
-	local pt, relTo, relPt, x, y = meter:GetPoint()
-	if not pt then
-		pt, relPt, x, y = "BOTTOMRIGHT", "BOTTOMRIGHT", -12, 40
+-- Right-Click Pass-Through for Camera Mouse Look
+meter:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
 	end
-	local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) }
-	settings.meterPos = pos
+end)
+meter:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
+
+function BordoUI_SetMeterScale(scale)
+	scale = tonumber(scale) or 1.0
+	if scale < 0.55 then scale = 0.55 end
+	if scale > 1.60 then scale = 1.60 end
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.meterScale = scale
+	if meter then
+		meter:SetScale(scale)
+	end
+end
+
+function BordoUI_GetMeterScale()
+	return (BordoUIDB and BordoUIDB.meterScale) or 1.0
+end
+
+local function SavePlace()
+	local right = meter:GetRight()
+	local bottom = meter:GetBottom()
+	if not (right and bottom) then return end
+	local uRight = (UIParent and UIParent:GetRight()) or 1024
+	local offsetX = math.floor((right - uRight) + 0.5)
+	local offsetY = math.floor(bottom + 0.5)
+	if offsetY < 20 then offsetY = 20 end
+	if offsetX > -5 then offsetX = -5 end
+	local pos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = offsetX, y = offsetY }
 	BordoUIDB = BordoUIDB or {}
 	BordoUIDB.meterPos = pos
-	settings.meterRight = math.floor(meter:GetRight() + 0.5)
-	settings.meterBottom = math.floor(meter:GetBottom() + 0.5)
+	local settings = Settings()
+	settings.meterPos = pos
+	settings.meterRight = math.floor(right + 0.5)
+	settings.meterBottom = math.floor(bottom + 0.5)
 	BordoUIDB.meterRight = settings.meterRight
 	BordoUIDB.meterBottom = settings.meterBottom
 	meter:ClearAllPoints()
-	meter:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
+	meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", offsetX, offsetY)
 end
 
 local shownLines = MAX_LINES
@@ -138,12 +169,73 @@ local function SetLines(count)
 	end
 end
 
--- The saved place, with every line; else the right column, under the build
--- list (or the run tracker), with as many lines as fit above the screen's bottom,
--- three at least. A small screen gets a shorter meter rather than an overlap.
--- The size follows the layout, never the numbers, so it holds through a run.
--- What the meter hangs from, last time: it is seated again only when that
--- changes, so a drag in progress is never pulled back.
+-- Resize Corner Grip (Bottom-Right)
+meter:SetResizable(true)
+if meter.SetMinResize then
+	meter:SetMinResize(140, 60)
+	meter:SetMaxResize(450, 600)
+end
+
+local meterResizeGrip = CreateFrame("Button", "BordoUIMeterResizeGrip", meter)
+meterResizeGrip:SetWidth(16)
+meterResizeGrip:SetHeight(16)
+meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -1, 1)
+meterResizeGrip:SetFrameLevel(meter:GetFrameLevel() + 25)
+meterResizeGrip:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonUp")
+
+meterResizeGrip.lines = {}
+for rIdx = 1, 3 do
+	local line = meterResizeGrip:CreateTexture(nil, "OVERLAY")
+	line:SetTexture(FLAT)
+	line:SetVertexColor(1, 0.82, 0, 0.85)
+	line:SetHeight(2)
+	line:SetWidth(4 * rIdx + 2)
+	line:SetPoint("BOTTOMRIGHT", meterResizeGrip, "BOTTOMRIGHT", 0, (rIdx - 1) * 4)
+	table.insert(meterResizeGrip.lines, line)
+end
+
+local isMeterSizing = false
+meterResizeGrip:SetScript("OnEnter", function()
+	GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT")
+	GameTooltip:SetText("Resize Damage Meter", 1, 0.82, 0)
+	GameTooltip:AddDoubleLine("Current Scale:", string.format("%d%%", math.floor(BordoUI_GetMeterScale() * 100 + 0.5)), 1, 1, 1, 0.2, 1, 0.2)
+	GameTooltip:AddLine(" ")
+	GameTooltip:AddLine("Left-Click Drag: Resize window height", 0.75, 0.75, 0.75)
+	GameTooltip:AddLine("Ctrl / Alt + Mouse Wheel: Smooth scale window", 0.75, 0.75, 0.75)
+	GameTooltip:AddLine("Right-Click: Reset to default size & scale", 0.85, 0.85, 0.3)
+	GameTooltip:Show()
+end)
+meterResizeGrip:SetScript("OnLeave", function()
+	GameTooltip:Hide()
+end)
+meterResizeGrip:SetScript("OnClick", function()
+	if arg1 == "RightButton" then
+		BordoUI_SetMeterScale(1.0)
+		SetLines(MAX_LINES)
+		SavePlace()
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default size (100%).")
+	end
+end)
+meterResizeGrip:SetScript("OnMouseDown", function()
+	if arg1 == "LeftButton" then
+		isMeterSizing = true
+		GameTooltip:Hide()
+		meter:StartSizing("BOTTOMRIGHT")
+	end
+end)
+meterResizeGrip:SetScript("OnMouseUp", function()
+	if isMeterSizing then
+		isMeterSizing = false
+		meter:StopMovingOrSizing()
+		local h = meter:GetHeight()
+		local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+		fitLines = math.max(3, math.min(MAX_LINES, fitLines))
+		SetLines(fitLines)
+		SavePlace()
+	end
+end)
+
 local seatedOn
 
 local function Seat(key, point, relative, relativePoint, x, y)
@@ -156,38 +248,29 @@ end
 
 local function Fit()
 	local settings = Settings()
-	local pos = (settings and settings.meterPos) or (BordoUIDB and BordoUIDB.meterPos)
+	local pos = (BordoUIDB and BordoUIDB.meterPos) or (settings and settings.meterPos)
 	if pos and pos.point then
+		if pos.y and pos.y < 10 then
+			pos.point = "BOTTOMRIGHT"
+			pos.relativePoint = "BOTTOMRIGHT"
+			pos.x = -12
+			pos.y = 40
+		end
 		Seat("savedPos", pos.point, UIParent, pos.relativePoint or pos.point, pos.x, pos.y)
-		SetLines(MAX_LINES)
+		SetLines(shownLines or MAX_LINES)
 		return
 	end
-	if settings.meterRight and settings.meterBottom then
+	if settings and settings.meterRight and settings.meterBottom and settings.meterBottom >= 20 then
 		Seat("saved"..settings.meterRight..","..settings.meterBottom, "BOTTOMRIGHT", UIParent, "BOTTOMLEFT", settings.meterRight, settings.meterBottom)
-		SetLines(MAX_LINES)
+		SetLines(shownLines or MAX_LINES)
 		return
 	end
-	local build, tracker = SurvivorUIBuild, SurvivorUITracker
-	local above, shift = nil, 0
-	if build and build:IsShown() and build:GetBottom() then
-		above = build
-	elseif tracker and tracker:GetBottom() then
-		above, shift = tracker, 8
-	end
-	if not above then
-		Seat("screen", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
-		SetLines(MAX_LINES)
-		return
-	end
-	Seat(above:GetName(), "TOPRIGHT", above, "BOTTOMRIGHT", shift, -10)
-	-- The piece above has a size of its own: its bottom read in the meter's units.
-	local room = above:GetBottom() * above:GetEffectiveScale() / meter:GetEffectiveScale() - 10 - 8
-	local fit = math.floor((room - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
-	SetLines(math.max(3, math.min(MAX_LINES, fit)))
+	Seat("screen", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
+	SetLines(shownLines or MAX_LINES)
 end
 
 local function StartMove()
-	if IsAltKeyDown() then
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 		meter:StartMoving()
 	end
 end
@@ -405,6 +488,25 @@ end)
 titleButton:RegisterForDrag("LeftButton")
 titleButton:SetScript("OnDragStart", StartMove)
 titleButton:SetScript("OnDragStop", StopMove)
+titleButton:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+titleButton:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
+titleButton:EnableMouseWheel(true)
+titleButton:SetScript("OnMouseWheel", function()
+	local cur = BordoUI_GetMeterScale()
+	if (arg1 or 0) > 0 then
+		BordoUI_SetMeterScale(cur + 0.05)
+	else
+		BordoUI_SetMeterScale(cur - 0.05)
+	end
+end)
 FitTitle()
 Lit(false)
 -- Under the title, the numbers, each named, in cells across the meter: NOW a
@@ -430,6 +532,16 @@ strip:EnableMouse(true)
 strip:RegisterForDrag("LeftButton")
 strip:SetScript("OnDragStart", StartMove)
 strip:SetScript("OnDragStop", StopMove)
+strip:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+strip:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
 strip.wash = strip:CreateTexture(nil, "BACKGROUND")
 strip.wash:SetTexture(FLAT)
 strip.wash:SetAllPoints(strip)
@@ -1139,6 +1251,16 @@ local function Bar(index)
 	bar:RegisterForDrag("LeftButton")
 	bar:SetScript("OnDragStart", StartMove)
 	bar:SetScript("OnDragStop", StopMove)
+	bar:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	bar:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
+		end
+	end)
 	-- The wheel over a line slides the list, as over the meter (meter.Wheel).
 	bar:EnableMouseWheel(true)
 	bar:SetScript("OnMouseWheel", function()
@@ -1154,7 +1276,7 @@ end
 -- The game's lines, or what came after Reset: each source's damage less what
 -- it had then, the most first, shares and damage per second from there.
 local function DamageLines()
-	local lines, total, dps = AZS_GetMeter()
+	local lines, total, dps = (AZS_GetMeter and AZS_GetMeter()) or nil
 	lines = lines or {}
 	local seconds = RunSeconds()
 	-- The clock going back means a new run: the reset goes with the old one.
@@ -1322,7 +1444,9 @@ local function PartyLine(shown, line)
 end
 
 local function OtherLines(get)
-	local lines, total, rate = get()()
+	local fn = get and get()
+	if not fn then return {}, 0, 0 end
+	local lines, total, rate = fn()
 	local shown = {}
 	local isPartyView = (VIEWS[view].key == "party")
 	for index = 1, table.getn(lines or {}) do
@@ -1453,6 +1577,15 @@ end
 -- The wheel over the meter: down, the first line goes up out of sight and the
 -- next comes in at the bottom; up, back. A view chosen starts at the top.
 meter.Wheel = function()
+	if IsControlKeyDown() or IsAltKeyDown() or IsShiftKeyDown() then
+		local cur = BordoUI_GetMeterScale()
+		if (arg1 or 0) > 0 then
+			BordoUI_SetMeterScale(cur + 0.05)
+		else
+			BordoUI_SetMeterScale(cur - 0.05)
+		end
+		return
+	end
 	local most = meter.most or 0
 	meter.scrolled = math.max(0, math.min(most, math.min(meter.scrolled or 0, most) - (arg1 or 0)))
 	Draw()
@@ -1491,7 +1624,7 @@ watcher:SetScript("OnUpdate", function()
 		end
 		viewRestored = viewRestored or not known
 	end
-	if Settings().meter and Running() then
+	if Settings().meter then
 		-- A view gone (the party left): the damage for now, the choice
 		-- kept for when it comes back.
 		if not VIEWS[view].get() then
@@ -1527,13 +1660,55 @@ end
 SurvivorUI_GameHud = SurvivorUI_GameHud or {}
 SurvivorUI_GameHud.meter = ApplyGameHud
 
-function SurvivorUI_ToggleMeter()
+function BordoUI_ToggleMeter()
+	BordoUIDB = BordoUIDB or {}
+	local isShown = (BordoUIDB.meter ~= false and meter:IsShown())
+	local newState = not isShown
+	BordoUIDB.meter = newState
 	local settings = Settings()
-	settings.meter = not settings.meter
+	settings.meter = newState
+
+	if newState then
+		if not BordoUIDB.meterPos or (BordoUIDB.meterPos.y and BordoUIDB.meterPos.y < 10) then
+			BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 }
+		end
+		BordoUI:RestorePosition(meter, BordoUIDB.meterPos)
+		if BordoUIDB.meterScale then
+			meter:SetScale(BordoUIDB.meterScale)
+		end
+		Draw()
+		meter:Show()
+		FitTitle()
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter |cff55ff55shown|r.")
+	else
+		meter:Hide()
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter |cffff5555hidden|r.")
+	end
 	ApplyGameHud()
-	DEFAULT_CHAT_FRAME:AddMessage("Survivor UI: "..(settings.meter
-		and "damage meter on; the Default meter is put away."
-		or (settings.noGameMeter and "damage meter off, and the Default one stays away." or "damage meter off; the Default one is back, with its healing and boss damage.")))
+end
+
+function SurvivorUI_ToggleMeter()
+	BordoUI_ToggleMeter()
+end
+
+function BordoUI_ResetMeter()
+	TakeBase()
+	if SurvivorUI_ResetRun then
+		SurvivorUI_ResetRun()
+	end
+	DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter data reset.")
+end
+
+function BordoUI_ResetMeterPosition()
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 40 }
+	BordoUIDB.meterScale = 1.0
+	if meter then
+		meter:ClearAllPoints()
+		meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
+		meter:SetScale(1.0)
+		SetLines(MAX_LINES)
+	end
 end
 
 -- The game's tooltip for units and the world: it opens at an anchor of its own
@@ -1585,6 +1760,9 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function()
 	seatedOn = nil
+	if BordoUIDB and BordoUIDB.meterScale then
+		BordoUI_SetMeterScale(BordoUIDB.meterScale)
+	end
 	Fit()
 	ApplyGameHud()
 end)

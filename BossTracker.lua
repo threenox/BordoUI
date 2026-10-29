@@ -191,6 +191,16 @@ frame:SetScript("OnDragStop", function()
         BordoUI_UpdateBuildPosition();
     end
 end);
+frame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+frame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
 frame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -222,6 +232,16 @@ headerBar:SetScript("OnDragStop", function()
     end
     if ( BordoUI_UpdateBuildPosition ) then
         BordoUI_UpdateBuildPosition();
+    end
+end);
+headerBar:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+headerBar:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
     end
 end);
 headerBar:EnableMouseWheel(true);

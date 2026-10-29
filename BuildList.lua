@@ -136,6 +136,16 @@ list:SetScript("OnDragStop", function()
 	list:StopMovingOrSizing()
 	SavePlace()
 end)
+list:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+list:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
 list:Hide()
 function BordoUI_UpdateBuildPosition()
 	RestorePlace()
