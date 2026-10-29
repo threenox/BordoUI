@@ -2689,6 +2689,113 @@ for classKey, buildList in pairs(BordoUI_BuildData.Builds) do
 end
 BordoUI_BuildData.SpellLookup = spellLookup;
 
+-- Multi-Starter Live Helper: Retrieve current live detected starters for a class
+function BordoUI_GetLiveStartersList(classKey)
+    local cUpper = string.upper(classKey or "WARRIOR");
+    local curLive = BordoUIDB and BordoUIDB.liveStarters and BordoUIDB.liveStarters[cUpper];
+    if curLive and curLive.starters and table.getn(curLive.starters) > 0 then
+        return curLive.starters;
+    end
+    if curLive and (curLive.starter1 or curLive.starter2) then
+        local list = {};
+        for s = 1, 6 do
+            if curLive["starter" .. s] then
+                table.insert(list, curLive["starter" .. s]);
+            end
+        end
+        if table.getn(list) > 0 then return list; end
+    end
+    local baseStarter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
+    if baseStarter then
+        local st1 = baseStarter[1] or baseStarter;
+        return {
+            {
+                name = st1.name,
+                key = st1.key or string.lower(string.gsub(st1.name, "[%s%p_]", "")),
+                icon = st1.icon,
+                school = st1.school or "Physical",
+                isStarter = true,
+                slot = 1,
+            }
+        };
+    end
+    return {};
+end
+
+-- Multi-Starter Dynamic Synchronizer: Places K starters into the last K slots (6, 5, 4...) and leaves 6 - K slots open for pick priorities
+function BordoUI_SyncBuildStarters(cb, startersList)
+    if not (cb and cb.spells and startersList) then return; end
+    local numStarters = table.getn(startersList);
+    if numStarters <= 0 then return; end
+    if numStarters > 6 then numStarters = 6; end
+    local numDraftSlots = 6 - numStarters;
+
+    for i = 1, numStarters do
+        local st = startersList[i];
+        if st and st.name then
+            local targetSlot = 6 - i + 1;
+            local existingSlot = nil;
+            for sIdx = 1, 6 do
+                local sp = cb.spells[sIdx];
+                if sp and (sp.name == st.name or (sp.key and sp.key == st.key)) then
+                    existingSlot = sIdx;
+                    sp.isStarter = true;
+                    sp.icon = st.icon or sp.icon;
+                    sp.school = st.school or sp.school;
+                    break;
+                end
+            end
+
+            if not existingSlot and not (cb.clearedSlots and cb.clearedSlots[targetSlot]) then
+                cb.spells[targetSlot] = {
+                    key = st.key or string.lower(string.gsub(st.name, "[%s%p_]", "")),
+                    name = st.name,
+                    icon = st.icon,
+                    school = st.school or "Physical",
+                    prio = targetSlot,
+                    rankMax = 8,
+                    reason = "Class starter ability #" .. i .. " (Action Bar Slot " .. (st.slot or i) .. ")",
+                    isStarter = true,
+                };
+            end
+
+            -- Remove starter duplicates from draft slots 1..numDraftSlots
+            for s = 1, numDraftSlots do
+                local sp = cb.spells[s];
+                if sp and (sp.name == st.name or (sp.key and sp.key == st.key)) then
+                    cb.spells[s] = nil;
+                end
+            end
+        end
+    end
+
+    -- Clear leftover starter flags from draft slots 1..numDraftSlots
+    for s = 1, numDraftSlots do
+        local sp = cb.spells[s];
+        if sp and sp.isStarter then
+            cb.spells[s] = nil;
+        end
+    end
+
+    -- Clear starter slots that are no longer part of current startersList
+    for s = (numDraftSlots + 1), 6 do
+        local sp = cb.spells[s];
+        if sp and sp.isStarter then
+            local matchFound = false;
+            for i = 1, numStarters do
+                local st = startersList[i];
+                if st and (st.name == sp.name or (st.key and st.key == sp.key)) then
+                    matchFound = true;
+                    break;
+                end
+            end
+            if not matchFound then
+                cb.spells[s] = nil;
+            end
+        end
+    end
+end
+
 function BordoUI_GetClassBuilds(classKey)
     if not classKey then return nil; end
     local upper = string.upper(classKey);
@@ -2724,12 +2831,8 @@ function BordoUI_GetClassBuilds(classKey)
                 talents = defTalents,
             };
         end
-                local b = BordoUIDB.customBuilds[upper][idx];
-        local baseStarter = BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[upper];
-        local liveStarters = BordoUIDB.liveStarters and BordoUIDB.liveStarters[upper];
-        local st1 = (liveStarters and liveStarters.starter1) or (baseStarter and (baseStarter[1] or baseStarter));
-        local st2 = (liveStarters and liveStarters.starter2);
-
+        local b = BordoUIDB.customBuilds[upper][idx];
+        local startersList = BordoUI_GetLiveStartersList(upper);
         if b and b.spells then
             for sIdx = 1, 6 do
                 local sp = b.spells[sIdx];
@@ -2737,68 +2840,7 @@ function BordoUI_GetClassBuilds(classKey)
                     sp.rankMax = 8;
                 end
             end
-
-            -- Starter 1 -> Slot #6 (or wherever placed)
-            if st1 then
-                local hasSt1 = false;
-                for sIdx = 1, 6 do
-                    local sp = b.spells[sIdx];
-                    if sp and (sp.name == st1.name or (sp.key and sp.key == st1.key)) then
-                        hasSt1 = true;
-                        sp.isStarter = true;
-                        break;
-                    end
-                end
-                if not hasSt1 and not (b.clearedSlots and b.clearedSlots[6]) then
-                    b.spells[6] = {
-                        key = st1.key or string.lower(string.gsub(st1.name, "[%s%p_]", "")),
-                        name = st1.name,
-                        icon = st1.icon,
-                        school = st1.school or "Physical",
-                        prio = 6,
-                        rankMax = 8,
-                        reason = st1.desc or "Class starter ability #1 (Action Bar Slot 1)",
-                        isStarter = true,
-                    };
-                end
-            end
-
-            -- Starter 2 -> Slot #5 (ONLY if player actually has a live 2nd starter detected!)
-            if st2 then
-                local hasSt2 = false;
-                for sIdx = 1, 6 do
-                    local sp = b.spells[sIdx];
-                    if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
-                        hasSt2 = true;
-                        sp.isStarter = true;
-                        break;
-                    end
-                end
-                if not hasSt2 and not (b.clearedSlots and b.clearedSlots[5]) then
-                    b.spells[5] = {
-                        key = st2.key or string.lower(string.gsub(st2.name, "[%s%p_]", "")),
-                        name = st2.name,
-                        icon = st2.icon,
-                        school = st2.school or "Physical",
-                        prio = 5,
-                        rankMax = 8,
-                        reason = st2.desc or "Class starter ability #2 (Action Bar Slot 2)",
-                        isStarter = true,
-                    };
-                end
-                -- Remove st2 from slots 1..4 if duplicate
-                for s = 1, 4 do
-                    local sp = b.spells[s];
-                    if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
-                        b.spells[s] = nil;
-                    end
-                end
-            else
-                -- No 2nd starter: Clear any leftover fake starter in slot 5 from old versions
-                if b.spells[5] and b.spells[5].isStarter then
-                    b.spells[5] = nil;
-                end
-            end
+            BordoUI_SyncBuildStarters(b, startersList);
         end
         if b and b.jewelry then
             for jKey, jItem in pairs(b.jewelry) do
