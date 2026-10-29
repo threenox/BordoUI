@@ -692,10 +692,15 @@ function BordoUI:ToggleMoveMode(enable)
                         f:ClearAllPoints();
                         f:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
                     elseif ( saveKey == "meterPos" ) then
-                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5), isCustom = true };
-                        BordoUIDB.meterPos = pos;
-                        BordoUIDB.meterIsCustom = true;
-                        BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
+                        if ( BordoUI_SaveMeterPlace ) then
+                            BordoUI_SaveMeterPlace();
+                        else
+                            local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5), isCustom = true };
+                            BordoUIDB.meterPos = pos;
+                            BordoUIDB.meterIsCustom = true;
+                            BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
+                            BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
+                        end
                     elseif ( saveKey == "chatPos" ) then
                         local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
                         BordoUIDB.chatPos = pos;

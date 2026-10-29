@@ -143,6 +143,9 @@ local isMeterDragging = false
 local isMeterSizing = false
 local seatedOn
 local Draw -- forward declaration
+local strip
+local LayCells
+local bars = {}
 
 local function SavePlace()
 	local right = meter:GetRight()
@@ -171,6 +174,7 @@ local function SavePlace()
 	meter:ClearAllPoints()
 	meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", offsetX, offsetY)
 end
+BordoUI_SaveMeterPlace = SavePlace
 
 local shownLines = MAX_LINES
 
@@ -604,7 +608,7 @@ end
 -- The seconds of the run's clock "now" is measured over.
 local NOW_WINDOW = 5
 
-local strip = CreateFrame("Frame", nil, meter)
+strip = CreateFrame("Frame", nil, meter)
 strip:SetPoint("TOPLEFT", meter, "TOPLEFT", 4, -STRIP_TOP)
 strip:SetWidth(currentWidth)
 strip:SetHeight(STRIP_HEIGHT)
@@ -640,7 +644,7 @@ end
 strip.cells = { Cell(), Cell(), Cell() }
 
 -- Each cell in its share of the width; three with NOW, two without.
-local function LayCells(count)
+LayCells = function(count)
 	if strip.count == count then
 		return
 	end
@@ -786,7 +790,7 @@ end
 
 local colors = {}               -- [source] = palette entry
 local colorsGiven = 0
-local bars = {}
+bars = bars or {}
 
 -- The pets and the summoned, by their own name in the meter: the game's
 -- summoning icons (its data has them all but the Felguard's, which came
@@ -1540,7 +1544,7 @@ local function OtherLines(get)
 	return shown, Num(total), Num(rate)
 end
 
-local function Draw()
+Draw = function()
 	-- The build list's shares are always the damage's.
 	local damage, damageTotal, damageRate = DamageLines()
 	for name in pairs(shares) do
