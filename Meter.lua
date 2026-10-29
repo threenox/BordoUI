@@ -260,13 +260,21 @@ meterResizeGrip:SetScript("OnClick", function()
 		BordoUIDB.meterWidth = nil
 		BordoUIDB.meterLines = nil
 		BordoUIDB.meterScale = 1.0
+		BordoUIDB.meterPos = nil
+		BordoUIDB.meterIsCustom = nil
+		local settings = Settings()
+		if settings then
+			settings.meterPos = nil
+			settings.meterRight = nil
+			settings.meterBottom = nil
+		end
 		BordoUI_SetMeterScale(1.0)
 		UpdateMeterWidth(WIDTH)
-		SetLines(MAX_LINES)
-		SavePlace()
+		seatedOn = nil
+		Fit()
 		if Draw then Draw() end
 		PlaySound("igMainMenuOptionCheckBoxOn")
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default size (100%).")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default layout & size.")
 	end
 end)
 meterResizeGrip:SetScript("OnMouseDown", function()
@@ -329,7 +337,7 @@ local function Fit()
 	local pos = (BordoUIDB and BordoUIDB.meterPos) or (settings and settings.meterPos)
 	local isCustom = (BordoUIDB and BordoUIDB.meterIsCustom) or (pos and pos.isCustom)
 
-	-- 1. Custom User Position: stick to user's coordinates!
+	-- 1. Custom User Position: user explicitly dragged the meter
 	if isCustom and pos and pos.point then
 		local x = pos.x or -12
 		local y = pos.y or 40
@@ -338,7 +346,21 @@ local function Fit()
 		return
 	end
 
-	-- 2. Default: Dock directly underneath SurvivorUIBuild
+	-- Clean old saved coordinates if not custom
+	if not isCustom then
+		if BordoUIDB then
+			BordoUIDB.meterPos = nil
+			BordoUIDB.meterRight = nil
+			BordoUIDB.meterBottom = nil
+		end
+		if settings then
+			settings.meterPos = nil
+			settings.meterRight = nil
+			settings.meterBottom = nil
+		end
+	end
+
+	-- 2. Default (Clean Install / Reset / Standard Layout): Dock directly underneath SurvivorUIBuild
 	local build, tracker = SurvivorUIBuild, SurvivorUITracker
 	local above, shift = nil, 0
 	if build and build:IsShown() and build:GetBottom() then
@@ -348,13 +370,19 @@ local function Fit()
 	end
 	if not above then
 		Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
-		SetLines((BordoUIDB and BordoUIDB.meterLines) or shownLines or MAX_LINES)
+		SetLines((BordoUIDB and BordoUIDB.meterLines) or MAX_LINES)
 		return
 	end
-	Seat("docked_" .. above:GetName(), "TOPRIGHT", above, "BOTTOMRIGHT", shift, -10)
-	SetLines((BordoUIDB and BordoUIDB.meterLines) or shownLines or MAX_LINES)
+	Seat(above:GetName(), "TOPRIGHT", above, "BOTTOMRIGHT", shift, -10)
+	-- Dynamic room calculation: fit lines above screen bottom without any overlap!
+	if BordoUIDB and BordoUIDB.meterLines then
+		SetLines(BordoUIDB.meterLines)
+	else
+		local room = above:GetBottom() * above:GetEffectiveScale() / meter:GetEffectiveScale() - 10 - 8
+		local fit = math.floor((room - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+		SetLines(math.max(3, math.min(MAX_LINES, fit)))
+	end
 end
-
 local function StartMove()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 		isMeterDragging = true
@@ -1861,6 +1889,19 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function()
 	seatedOn = nil
+	if not (BordoUIDB and BordoUIDB.meterIsCustom) then
+		if BordoUIDB then
+			BordoUIDB.meterPos = nil
+			BordoUIDB.meterRight = nil
+			BordoUIDB.meterBottom = nil
+		end
+		local settings = Settings()
+		if settings then
+			settings.meterPos = nil
+			settings.meterRight = nil
+			settings.meterBottom = nil
+		end
+	end
 	if BordoUIDB and BordoUIDB.meterWidth then
 		UpdateMeterWidth(BordoUIDB.meterWidth - 8)
 	else
