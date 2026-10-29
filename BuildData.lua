@@ -4042,6 +4042,8 @@ BordoUI_Catalog.Spells = {
         { name = "Sweeping Strikes", school = "Physical", icon = "Interface\\Icons\\Ability_Rogue_SliceDice", desc = "Causes your next attacks to strike an additional nearby enemy." },
         { name = "Overpower", school = "Physical", icon = "Interface\\Icons\\Ability_MeleeDamage", desc = "Unavoidable counter-strike when an enemy dodges your attack." },
         { name = "Slam", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_DecisiveStrike", desc = "Heavy focused overhead swing dealing high single-target damage." },
+        { name = "Demoralizing Shout", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_WarCry", desc = "Shouts at nearby enemies, reducing their attack power and movement speed." },
+        { name = "Bloodrage", school = "Physical", icon = "Interface\\Icons\\Ability_Racial_BloodRage", desc = "Instantly generates rage and grants bonus attack power over time." },
     },
     HUNTER = {
         { name = "Volley", school = "Arcane", icon = "Interface\\Icons\\Ability_Marksmanship", desc = "Continuously rains arrows in a large radius, decimating dense enemy packs." },
@@ -4054,6 +4056,8 @@ BordoUI_Catalog.Spells = {
         { name = "Arcane Shot", school = "Arcane", icon = "Interface\\Icons\\Ability_ImpalingBolt", desc = "An instant shot that causes arcane damage to the target." },
         { name = "Concussive Shot", school = "Physical", icon = "Interface\\Icons\\Spell_Frost_Stun", desc = "Dazes the target, slowing its movement speed by 50%." },
         { name = "Rapid Fire", school = "Physical", icon = "Interface\\Icons\\Ability_Hunter_RunningShot", desc = "Increases ranged attack speed by 40% for 15 seconds." },
+        { name = "Auto Shot", school = "Physical", icon = "Interface\\Icons\\Ability_Whirlwind", desc = "Automatic ranged attacks firing arrows continuously." },
+        { name = "Hunter's Mark", school = "Physical", icon = "Interface\\Icons\\Ability_Hunter_SniperShot", desc = "Marks target, increasing all ranged damage dealt to it." },
     },
     MAGE = {
         { name = "Blizzard", school = "Frost", icon = "Interface\\Icons\\Spell_Frost_IceStorm", desc = "Screen-wide ice storm heavily slowing all approaching mobs with continuous damage." },
@@ -4068,6 +4072,8 @@ BordoUI_Catalog.Spells = {
         { name = "Scorch", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_SoulBurn", desc = "Fast-casting fire spell that stacks Fire vulnerability on the target." },
         { name = "Frost Nova", school = "Frost", icon = "Interface\\Icons\\Spell_Frost_FrostNova", desc = "Blasts nearby enemies for frost damage and freezes them in place for 8 sec." },
         { name = "Ice Barrier", school = "Frost", icon = "Interface\\Icons\\Spell_Ice_Lament", desc = "Instantly shields you with a thick frost barrier absorbing incoming damage." },
+        { name = "Polymorph", school = "Arcane", icon = "Interface\\Icons\\Spell_Nature_Polymorph", desc = "Transforms enemy into a sheep, dealing arcane burst on detonation." },
+        { name = "Fire Blast", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_Fireball", desc = "Instant fire strike dealing quick direct damage to target." },
     },
     WARLOCK = {
         { name = "Corruption", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_AbominationExplosion", desc = "Core shadow curse ticking relentless damage while feeding passives." },
@@ -4080,7 +4086,7 @@ BordoUI_Catalog.Spells = {
         { name = "Rain of Fire", school = "Fire", icon = "Interface\\Icons\\Spell_Shadow_RainOfFire", desc = "Fiery meteors raining down continuously in a designated target zone." },
         { name = "Immolate", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_Immolation", desc = "Burns the enemy for initial fire damage plus periodic burn." },
         { name = "Searing Pain", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_SoulBurn", desc = "Instant searing blast with high critical strike chance." },
-        { name = "Soulfire", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_Fireball02", desc = "Massive demon flame nuke incinerating target for colossal single-hit damage." },
+        { name = "Soul Fire", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_Fireball02", desc = "Massive demon flame nuke incinerating target for colossal single-hit damage." },
     },
     ROGUE = {
         { name = "Blade Flurry", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_PunishingBlow", desc = "Core cleave ability causing melee attacks to strike adjacent enemies." },
@@ -4094,6 +4100,7 @@ BordoUI_Catalog.Spells = {
         { name = "Gouge", school = "Physical", icon = "Interface\\Icons\\Ability_Gouge", desc = "Gouges the enemy's eyes, incapacitating them for up to 5.5 seconds." },
         { name = "Ghostly Strike", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_Curse", desc = "Strikes the enemy and increases your dodge chance by 15%." },
         { name = "Adrenaline Rush", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_ShadowWordDominate", desc = "Increases energy regeneration and attack tempo by 100%." },
+        { name = "Seal Fate", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_ChillTouch", desc = "Critical strikes with combo-generating abilities add an additional combo point." },
     },
     SHAMAN = {
         { name = "Chain Lightning", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_ChainLightning", desc = "Core bouncing lightning strike that arcs across multiple enemies." },
@@ -4108,6 +4115,7 @@ BordoUI_Catalog.Spells = {
         { name = "Windfury", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Cyclone", desc = "Imbues your weapon for a chance to unleash 2 extra instant attacks." },
         { name = "Lightning Shield", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_LightningShield", desc = "Surrounds you with lightning orbs that shock attackers." },
         { name = "Healing Wave", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_MagicImmunity", desc = "Heals you for a significant amount of lost health." },
+        { name = "Call of Flame", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_Immolation", desc = "Empowers fire totems, increasing their radius and damage output." },
     },
     PRIEST = {
         { name = "Shadow Word: Pain", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_ShadowWordPain", desc = "Core shadow DoT spreading across approaching enemies, ticking down life." },
@@ -4120,6 +4128,7 @@ BordoUI_Catalog.Spells = {
         { name = "Power Word: Shield", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_PowerWordShield", desc = "Draws on the soul of the friendly target to shield them from all damage." },
         { name = "Renew", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_Renew", desc = "Heals target over 15 seconds, providing persistent survival." },
         { name = "Psychic Scream", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_PsychicScream", desc = "Emits a psychic scream, causing 5 nearby enemies to flee in terror." },
+        { name = "Lightwell", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_SummonLightwell", desc = "Creates a holy lightwell that continuously heals you and pulses holy radiant damage." },
     },
     DRUID = {
         { name = "Hurricane", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Cyclone", desc = "Screen-wide swirling tempest slowing enemy move speed and dealing rapid nature damage." },
@@ -4134,6 +4143,7 @@ BordoUI_Catalog.Spells = {
         { name = "Barkskin", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_StoneClawTotem", desc = "Turns skin as tough as bark, reducing all damage taken by 20%." },
         { name = "Entangling Roots", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_StrangleVines", desc = "Roots target in place, rendering them completely immobile." },
         { name = "Thorns", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Thorns", desc = "Sprouts thorns on you that retaliate with nature damage when struck." },
+        { name = "Rejuvenation", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Rejuvenation", desc = "Heals the target continuously over 12 seconds." },
     },
 };
 
@@ -4224,6 +4234,11 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "WARRIOR", spell = "Battle Shout", name = "Eye of the Splitting Sky: Battle Shout", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Battle Shout", desc = "Legendary amulet - remakes Battle Shout\nIncreases Battle Shout strength buff by 30%." },
     { slotType = "NECK", class = "WARRIOR", spell = "Rend", name = "Eye of the Splitting Sky: Rend", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Rend", desc = "Legendary amulet - remakes Rend\nIncreases Rend bleed damage by 30%." },
     { slotType = "NECK", class = "WARRIOR", spell = "Bloodrage", name = "Eye of the Splitting Sky: Bloodrage", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Bloodrage", desc = "Legendary amulet - remakes Bloodrage\nBloodrage procs 25% more often and grants extra attack power." },
+    { slotType = "NECK", class = "WARRIOR", spell = "Revenge", name = "Eye of the Splitting Sky: Revenge", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Revenge", desc = "Legendary amulet - remakes Revenge\nRevenge strikes 2 additional targets and deals +35% damage." },
+    { slotType = "NECK", class = "WARRIOR", spell = "Shield Block", name = "Eye of the Splitting Sky: Shield Block", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Shield Block", desc = "Legendary amulet - remakes Shield Block\nShield Block reflects 30% absorbed damage back to attacker." },
+    { slotType = "NECK", class = "WARRIOR", spell = "Sweeping Strikes", name = "Eye of the Splitting Sky: Sweeping Strikes", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Sweeping Strikes", desc = "Legendary amulet - remakes Sweeping Strikes\nSweeping Strikes cleaves to 2 additional enemies with +20% damage." },
+    { slotType = "NECK", class = "WARRIOR", spell = "Overpower", name = "Eye of the Splitting Sky: Overpower", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Overpower", desc = "Legendary amulet - remakes Overpower\nOverpower critical strike damage increased by 50%." },
+    { slotType = "NECK", class = "WARRIOR", spell = "Slam", name = "Eye of the Splitting Sky: Slam", icon = "Interface\\Icons\\INV_Jewelry_Necklace_18", quality = 5, benefit = "Remakes Slam", desc = "Legendary amulet - remakes Slam\nSlam becomes instant cast and deals +25% damage." },
     -- SHAMAN Legendary Amulets
     { slotType = "NECK", class = "SHAMAN", spell = "Magma Totem", name = "Eye of the Splitting Sky: Magma Totem", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Magma Totem", desc = "Legendary amulet - remakes Magma Totem\nEvery Magma Totem pulse heals you for 2% of max health and deals +25% damage." },
     { slotType = "NECK", class = "SHAMAN", spell = "Searing Totem", name = "Eye of the Splitting Sky: Searing Totem", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Searing Totem", desc = "Legendary amulet - remakes Searing Totem\nIncreases Searing Totem attack rate and damage by 30%." },
@@ -4236,6 +4251,8 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "SHAMAN", spell = "Fire Nova", name = "Eye of the Splitting Sky: Fire Nova", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Fire Nova", desc = "Legendary amulet - remakes Fire Nova\nIncreases Fire Nova area by 30% and damage by 25%." },
     { slotType = "NECK", class = "SHAMAN", spell = "Healing Wave", name = "Eye of the Splitting Sky: Healing Wave", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Healing Wave", desc = "Legendary amulet - remakes Healing Wave\nIncreases Healing Wave healing by 35%." },
     { slotType = "NECK", class = "SHAMAN", spell = "Call of Flame", name = "Eye of the Splitting Sky: Call of Flame", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Call of Flame", desc = "Legendary amulet - remakes Call of Flame\nIncreases all fire totem damage and radius by 30%." },
+    { slotType = "NECK", class = "SHAMAN", spell = "Stormstrike", name = "Eye of the Splitting Sky: Stormstrike", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Stormstrike", desc = "Legendary amulet - remakes Stormstrike\nStormstrike grants +30% nature damage bonus and strikes 1 more target." },
+    { slotType = "NECK", class = "SHAMAN", spell = "Windfury", name = "Eye of the Splitting Sky: Windfury", icon = "Interface\\Icons\\INV_Jewelry_Necklace_23", quality = 5, benefit = "Remakes Windfury", desc = "Legendary amulet - remakes Windfury\nWindfury extra attacks deal +35% attack power bonus." },
     -- MAGE Legendary Amulets
     { slotType = "NECK", class = "MAGE", spell = "Blizzard", name = "Eye of the Splitting Sky: Blizzard", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Blizzard", desc = "Legendary amulet - remakes Blizzard\nBlizzard area increased by 25% and damage increased by 20%." },
     { slotType = "NECK", class = "MAGE", spell = "Frostbolt", name = "Eye of the Splitting Sky: Frostbolt", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Frostbolt", desc = "Legendary amulet - remakes Frostbolt\nFrostbolt strikes 1 more target and deals +25% damage." },
@@ -4249,6 +4266,8 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "MAGE", spell = "Frost Nova", name = "Eye of the Splitting Sky: Frost Nova", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Frost Nova", desc = "Legendary amulet - remakes Frost Nova\nReduces Frost Nova cooldown by 25% and deals +30% damage." },
     { slotType = "NECK", class = "MAGE", spell = "Ice Barrier", name = "Eye of the Splitting Sky: Ice Barrier", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Ice Barrier", desc = "Legendary amulet - remakes Ice Barrier\nIce Barrier absorb increased by 35%." },
     { slotType = "NECK", class = "MAGE", spell = "Scorch", name = "Eye of the Splitting Sky: Scorch", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Scorch", desc = "Legendary amulet - remakes Scorch\nScorch casts 25% faster and deals +25% damage." },
+    { slotType = "NECK", class = "MAGE", spell = "Polymorph", name = "Eye of the Splitting Sky: Polymorph", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Polymorph", desc = "Legendary amulet - remakes Polymorph\nEquip: Polymorph strikes 1 more target.\nEquip: Increases the damage of Polymorph by 60%.\nEquip: Polymorph explodes a second time for 50% of its damage." },
+    { slotType = "NECK", class = "MAGE", spell = "Fire Blast", name = "Eye of the Splitting Sky: Fire Blast", icon = "Interface\\Icons\\INV_Jewelry_Necklace_30", quality = 5, benefit = "Remakes Fire Blast", desc = "Legendary amulet - remakes Fire Blast\nFire Blast cooldown reduced by 25% and deals +30% critical damage." },
     -- ROGUE Legendary Amulets
     { slotType = "NECK", class = "ROGUE", spell = "Sinister Strike", name = "Eye of the Splitting Sky: Sinister Strike", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Sinister Strike", desc = "Legendary amulet - remakes Sinister Strike\nSinister Strike deals +25% damage and has 15% chance to hit twice." },
     { slotType = "NECK", class = "ROGUE", spell = "Blade Flurry", name = "Eye of the Splitting Sky: Blade Flurry", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Blade Flurry", desc = "Legendary amulet - remakes Blade Flurry\nBlade Flurry cleaves to 1 additional target for 50% damage." },
@@ -4261,6 +4280,7 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "ROGUE", spell = "Ghostly Strike", name = "Eye of the Splitting Sky: Ghostly Strike", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Ghostly Strike", desc = "Legendary amulet - remakes Ghostly Strike\nGhostly Strike dodge chance increased by 10% and deals +25% damage." },
     { slotType = "NECK", class = "ROGUE", spell = "Adrenaline Rush", name = "Eye of the Splitting Sky: Adrenaline Rush", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Adrenaline Rush", desc = "Legendary amulet - remakes Adrenaline Rush\nAdrenaline Rush duration increased by 3s and cooldown reduced by 20%." },
     { slotType = "NECK", class = "ROGUE", spell = "Seal Fate", name = "Eye of the Splitting Sky: Seal Fate", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Seal Fate", desc = "Legendary amulet - remakes Seal Fate\nSeal Fate generates combo points 25% faster." },
+    { slotType = "NECK", class = "ROGUE", spell = "Hemorrhage", name = "Eye of the Splitting Sky: Hemorrhage", icon = "Interface\\Icons\\INV_Jewelry_Necklace_27", quality = 5, benefit = "Remakes Hemorrhage", desc = "Legendary amulet - remakes Hemorrhage\nHemorrhage vulnerability increased by 30% and strikes bleed target." },
     -- PRIEST Legendary Amulets
     { slotType = "NECK", class = "PRIEST", spell = "Shadow Word: Pain", name = "Eye of the Splitting Sky: Shadow Word: Pain", icon = "Interface\\Icons\\INV_Jewelry_Necklace_21", quality = 5, benefit = "Remakes Shadow Word: Pain", desc = "Legendary amulet - remakes Shadow Word: Pain\nShadow Word: Pain ticks 30% faster and deals +25% damage." },
     { slotType = "NECK", class = "PRIEST", spell = "Mind Flay", name = "Eye of the Splitting Sky: Mind Flay", icon = "Interface\\Icons\\INV_Jewelry_Necklace_21", quality = 5, benefit = "Remakes Mind Flay", desc = "Legendary amulet - remakes Mind Flay\nMind Flay slow increased to 60% and deals +25% damage." },
@@ -4284,6 +4304,7 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "WARLOCK", spell = "Searing Pain", name = "Eye of the Splitting Sky: Searing Pain", icon = "Interface\\Icons\\INV_Jewelry_Necklace_13", quality = 5, benefit = "Remakes Searing Pain", desc = "Legendary amulet - remakes Searing Pain\nSearing Pain critical strike chance increased by 20%." },
     { slotType = "NECK", class = "WARLOCK", spell = "Death Coil", name = "Eye of the Splitting Sky: Death Coil", icon = "Interface\\Icons\\INV_Jewelry_Necklace_13", quality = 5, benefit = "Remakes Death Coil", desc = "Legendary amulet - remakes Death Coil\nDeath Coil cooldown reduced by 25% and heal increased by 35%." },
     { slotType = "NECK", class = "WARLOCK", spell = "Soul Fire", name = "Eye of the Splitting Sky: Soul Fire", icon = "Interface\\Icons\\INV_Jewelry_Necklace_13", quality = 5, benefit = "Remakes Soul Fire", desc = "Legendary amulet - remakes Soul Fire\nSoul Fire deals +40% catastrophic damage." },
+    { slotType = "NECK", class = "WARLOCK", spell = "Siphon Life", name = "Eye of the Splitting Sky: Siphon Life", icon = "Interface\\Icons\\INV_Jewelry_Necklace_13", quality = 5, benefit = "Remakes Siphon Life", desc = "Legendary amulet - remakes Siphon Life\nSiphon Life heals for 50% more and drains 2 additional targets." },
     -- DRUID Legendary Amulets
     { slotType = "NECK", class = "DRUID", spell = "Wrath", name = "Eye of the Splitting Sky: Wrath", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Wrath", desc = "Legendary amulet - remakes Wrath\nWrath strikes 1 more target and deals +25% damage." },
     { slotType = "NECK", class = "DRUID", spell = "Moonfire", name = "Eye of the Splitting Sky: Moonfire", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Moonfire", desc = "Legendary amulet - remakes Moonfire\nMoonfire burn ticks 30% faster and deals +25% damage." },
@@ -4297,6 +4318,7 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "DRUID", spell = "Entangling Roots", name = "Eye of the Splitting Sky: Entangling Roots", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Entangling Roots", desc = "Legendary amulet - remakes Entangling Roots\nRoots deal periodic nature damage while holding targets." },
     { slotType = "NECK", class = "DRUID", spell = "Thorns", name = "Eye of the Splitting Sky: Thorns", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Thorns", desc = "Legendary amulet - remakes Thorns\nThorns retaliate for 100% more nature damage." },
     { slotType = "NECK", class = "DRUID", spell = "Rejuvenation", name = "Eye of the Splitting Sky: Rejuvenation", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Rejuvenation", desc = "Legendary amulet - remakes Rejuvenation\nWhile Rejuvenation heals you, 5% of damage dealt heals you too." },
+    { slotType = "NECK", class = "DRUID", spell = "Barkskin", name = "Eye of the Splitting Sky: Barkskin", icon = "Interface\\Icons\\INV_Jewelry_Necklace_AhnQiraj_03", quality = 5, benefit = "Remakes Barkskin", desc = "Legendary amulet - remakes Barkskin\nBarkskin damage reduction increased by 20% and reflects 50% damage." },
     -- HUNTER Legendary Amulets
     { slotType = "NECK", class = "HUNTER", spell = "Auto Shot", name = "Eye of the Splitting Sky: Auto Shot", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Auto Shot", desc = "Legendary amulet - remakes Auto Shot\nAuto Shot fires 1 additional projectile at nearest enemy." },
     { slotType = "NECK", class = "HUNTER", spell = "Arcane Shot", name = "Eye of the Splitting Sky: Arcane Shot", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Arcane Shot", desc = "Legendary amulet - remakes Arcane Shot\nArcane Shot deals +30% damage and cooldown reduced by 15%." },
@@ -4309,4 +4331,5 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "HUNTER", spell = "Immolation Trap", name = "Eye of the Splitting Sky: Immolation Trap", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Immolation Trap", desc = "Legendary amulet - remakes Immolation Trap\nImmolation Trap burn damage increased by 35%." },
     { slotType = "NECK", class = "HUNTER", spell = "Frost Trap", name = "Eye of the Splitting Sky: Frost Trap", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Frost Trap", desc = "Legendary amulet - remakes Frost Trap\nFrost Trap ice patch area increased by 30% and slow increased." },
     { slotType = "NECK", class = "HUNTER", spell = "Hunter's Mark", name = "Eye of the Splitting Sky: Hunter's Mark", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Hunter's Mark", desc = "Legendary amulet - remakes Hunter's Mark\nHunter's Mark increases all damage dealt to target by an extra 15%." },
+    { slotType = "NECK", class = "HUNTER", spell = "Rapid Fire", name = "Eye of the Splitting Sky: Rapid Fire", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Rapid Fire", desc = "Legendary amulet - remakes Rapid Fire\nRapid Fire duration increased by 40% and grants +25% attack speed." },
 };
