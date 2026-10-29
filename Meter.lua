@@ -113,8 +113,20 @@ end
 
 local function SavePlace()
 	local settings = Settings()
+	local pt, relTo, relPt, x, y = meter:GetPoint()
+	if not pt then
+		pt, relPt, x, y = "BOTTOMRIGHT", "BOTTOMRIGHT", -12, 40
+	end
+	local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) }
+	settings.meterPos = pos
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.meterPos = pos
 	settings.meterRight = math.floor(meter:GetRight() + 0.5)
 	settings.meterBottom = math.floor(meter:GetBottom() + 0.5)
+	BordoUIDB.meterRight = settings.meterRight
+	BordoUIDB.meterBottom = settings.meterBottom
+	meter:ClearAllPoints()
+	meter:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
 end
 
 local shownLines = MAX_LINES
@@ -144,7 +156,13 @@ end
 
 local function Fit()
 	local settings = Settings()
-	if settings.meterRight then
+	local pos = (settings and settings.meterPos) or (BordoUIDB and BordoUIDB.meterPos)
+	if pos and pos.point then
+		Seat("savedPos", pos.point, UIParent, pos.relativePoint or pos.point, pos.x, pos.y)
+		SetLines(MAX_LINES)
+		return
+	end
+	if settings.meterRight and settings.meterBottom then
 		Seat("saved"..settings.meterRight..","..settings.meterBottom, "BOTTOMRIGHT", UIParent, "BOTTOMLEFT", settings.meterRight, settings.meterBottom)
 		SetLines(MAX_LINES)
 		return
@@ -1173,11 +1191,92 @@ end
 
 -- A party's line: its hero's class color and icon (the character
 -- creation's, cut inside its round edge), its damage a second and top spell.
+local CLASS_COORDS = {
+	["WARRIOR"]     = { 0.00, 0.25, 0.00, 0.25 },
+	["MAGE"]        = { 0.25, 0.50, 0.00, 0.25 },
+	["ROGUE"]       = { 0.50, 0.75, 0.00, 0.25 },
+	["DRUID"]       = { 0.75, 1.00, 0.00, 0.25 },
+	["HUNTER"]      = { 0.00, 0.25, 0.25, 0.50 },
+	["SHAMAN"]      = { 0.25, 0.50, 0.25, 0.50 },
+	["PRIEST"]      = { 0.50, 0.75, 0.25, 0.50 },
+	["WARLOCK"]     = { 0.75, 1.00, 0.25, 0.50 },
+	["PALADIN"]     = { 0.00, 0.25, 0.50, 0.75 },
+}
+
+CLASS_COORDS["KRIEGER"]      = CLASS_COORDS["WARRIOR"]
+CLASS_COORDS["MAGIER"]       = CLASS_COORDS["MAGE"]
+CLASS_COORDS["SCHURKE"]      = CLASS_COORDS["ROGUE"]
+CLASS_COORDS["JÃ„GER"]        = CLASS_COORDS["HUNTER"]
+CLASS_COORDS["JAEGER"]       = CLASS_COORDS["HUNTER"]
+CLASS_COORDS["SCHAMANE"]     = CLASS_COORDS["SHAMAN"]
+CLASS_COORDS["PRIESTER"]     = CLASS_COORDS["PRIEST"]
+CLASS_COORDS["HEXENMEISTER"] = CLASS_COORDS["WARLOCK"]
+
+local CLASS_FALLBACK_ICONS = {
+	["WARRIOR"]     = "Interface\\Icons\\INV_Sword_27",
+	["PALADIN"]     = "Interface\\Icons\\Spell_Holy_SealOfMight",
+	["HUNTER"]      = "Interface\\Icons\\INV_Weapon_Bow_02",
+	["ROGUE"]       = "Interface\\Icons\\INV_ThrowingKnife_04",
+	["PRIEST"]      = "Interface\\Icons\\Spell_Holy_PowerWordShield",
+	["SHAMAN"]      = "Interface\\Icons\\Spell_Nature_ChainLightning",
+	["MAGE"]        = "Interface\\Icons\\Spell_Frost_IceStorm",
+	["WARLOCK"]     = "Interface\\Icons\\Spell_Shadow_DeathCoil",
+	["DRUID"]       = "Interface\\Icons\\Ability_Druid_CatForm",
+}
+CLASS_FALLBACK_ICONS["KRIEGER"]      = CLASS_FALLBACK_ICONS["WARRIOR"]
+CLASS_FALLBACK_ICONS["MAGIER"]       = CLASS_FALLBACK_ICONS["MAGE"]
+CLASS_FALLBACK_ICONS["SCHURKE"]      = CLASS_FALLBACK_ICONS["ROGUE"]
+CLASS_FALLBACK_ICONS["JÃ„GER"]        = CLASS_FALLBACK_ICONS["HUNTER"]
+CLASS_FALLBACK_ICONS["JAEGER"]       = CLASS_FALLBACK_ICONS["HUNTER"]
+CLASS_FALLBACK_ICONS["SCHAMANE"]     = CLASS_FALLBACK_ICONS["SHAMAN"]
+CLASS_FALLBACK_ICONS["PRIESTER"]     = CLASS_FALLBACK_ICONS["PRIEST"]
+CLASS_FALLBACK_ICONS["HEXENMEISTER"] = CLASS_FALLBACK_ICONS["WARLOCK"]
+
+function SurvivorUI_ClassIcon(class)
+	if not class then return nil, nil end
+	local upper = string.upper(tostring(class))
+	local coords = CLASS_COORDS[upper] or (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[upper])
+	if coords then
+		return "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes", coords
+	end
+	if CLASS_FALLBACK_ICONS[upper] then
+		return CLASS_FALLBACK_ICONS[upper], { 0.08, 0.92, 0.08, 0.92 }
+	end
+	return nil, nil
+end
+
+local function ResolvePlayerClass(name, rawClass)
+	if rawClass and rawClass ~= "" then
+		return string.upper(tostring(rawClass))
+	end
+	if AZS_PARTY then
+		for p = 1, table.getn(AZS_PARTY) do
+			local m = AZS_PARTY[p]
+			if m and m.name == name and m.class and m.class ~= "" then
+				return string.upper(tostring(m.class))
+			end
+		end
+	end
+	if UnitName("player") == name then
+		local _, eng = UnitClass("player")
+		if eng then return string.upper(eng) end
+	end
+	for i = 1, 4 do
+		if UnitName("party"..i) == name then
+			local _, eng = UnitClass("party"..i)
+			if eng then return string.upper(eng) end
+		end
+	end
+	return nil
+end
+
 local function PartyLine(shown, line)
-	local class = string.upper(tostring(line.class))
+	local class = ResolvePlayerClass(line.name, line.class)
 	local r, g, b = 0.6, 0.6, 0.6
-	if SurvivorUI_ClassColor then
+	if class and SurvivorUI_ClassColor then
 		r, g, b = SurvivorUI_ClassColor(class)
+	elseif class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+		r, g, b = RAID_CLASS_COLORS[class].r, RAID_CLASS_COLORS[class].g, RAID_CLASS_COLORS[class].b
 	end
 	shown.color = { r, g, b }
 	shown.dps, shown.topdps = Num(line.dps), Num(line.topdps)
@@ -1185,25 +1284,27 @@ local function PartyLine(shown, line)
 		shown.top = English(tostring(line.top))
 	end
 	local art, coords = nil, nil
-	if SurvivorUI_ClassIcon then
+	if class then
 		art, coords = SurvivorUI_ClassIcon(class)
 	end
 	if coords then
 		local cutX, cutY = (coords[2] - coords[1]) * 0.1, (coords[4] - coords[3]) * 0.1
 		shown.art = art
 		shown.coords = { coords[1] + cutX, coords[2] - cutX, coords[3] + cutY, coords[4] - cutY }
+	elseif art then
+		shown.art = art
+		shown.coords = { 0.08, 0.92, 0.08, 0.92 }
 	end
 end
 
--- The healing, the boss fight's or the party's lines, as the game gives
--- them (Reset is the damage view's).
 local function OtherLines(get)
 	local lines, total, rate = get()()
 	local shown = {}
+	local isPartyView = (VIEWS[view].key == "party")
 	for index = 1, table.getn(lines or {}) do
 		local line = lines[index]
 		local entry = { name = line.name or "?", dmg = Num(line.dmg), share = Num(line.share), proc = Num(line.proc) == 1 }
-		if line.class and line.class ~= "" then
+		if isPartyView or (line.class and line.class ~= "") then
 			PartyLine(entry, line)
 		end
 		table.insert(shown, entry)

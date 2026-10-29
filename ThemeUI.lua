@@ -158,11 +158,35 @@ local PositionMicroButtons
 AZSHelper_SkillsContainer = row
 local function SaveHudPosition()
 	BordoUIDB = BordoUIDB or {}
-	local x = math.floor(row:GetLeft() - UIParent:GetWidth() / 2 + row:GetWidth() / 2 + 0.5)
-	local y = math.floor(row:GetBottom() - UIParent:GetHeight() / 2 + row:GetHeight() / 2 + 0.5)
-	BordoUIDB.hudPos = { point = "CENTER", x = x, y = y }
+	local pt, relTo, relPt, x, y = row:GetPoint()
+	if not pt then
+		local cx, cy = row:GetCenter()
+		local ux, uy = UIParent:GetCenter()
+		pt, relPt, x, y = "CENTER", "CENTER", (cx or 0) - (ux or 0), (cy or 0) - (uy or 0)
+	end
+	local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) }
+	BordoUIDB.hudPos = pos
+	BordoUIDB.centerHudPos = pos
 	AZSHelperDB = AZSHelperDB or {}
-	AZSHelperDB.rowPos = BordoUIDB.hudPos
+	AZSHelperDB.rowPos = pos
+	AZSHelperDB.centerHudPos = pos
+	row:ClearAllPoints()
+	row:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y)
+end
+
+local function RestoreHudPosition()
+	local pos = (BordoUIDB and (BordoUIDB.hudPos or BordoUIDB.centerHudPos))
+		or (AZSHelperDB and (AZSHelperDB.rowPos or AZSHelperDB.centerHudPos))
+	if pos and pos.point then
+		BordoUI:RestorePosition(row, pos)
+	else
+		row:ClearAllPoints()
+		row:SetPoint("CENTER", UIParent, "CENTER", 0, -ROW_BELOW_CENTER)
+	end
+	if UI.xpBar and UI.xpBar.ClearAllPoints then
+		UI.xpBar:ClearAllPoints()
+		UI.xpBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
+	end
 end
 row:SetScript("OnDragStart", function()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
@@ -2044,6 +2068,7 @@ local unitElapsed = 0
 local auraElapsed = 0
 local tallyElapsed = 0
 local skillElapsed = 0
+local lastPhase = nil
 local mainWatcher = CreateFrame("Frame")
 mainWatcher:SetScript("OnUpdate", function()
 	unitElapsed = unitElapsed + arg1
@@ -2065,6 +2090,13 @@ mainWatcher:SetScript("OnUpdate", function()
 		tallyElapsed = 0
 		UpdateBottomBar()
 		UpdateEncounterBars()
+		local phase = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph)
+		if phase and phase ~= lastPhase then
+			if phase == "ready" or phase == "playing" then
+				RestoreHudPosition()
+			end
+			lastPhase = phase
+		end
 		if AZS_IsHudShown and AZS_IsHudShown("flag") then
 			AZS_SetHudShown("flag", false)
 		end
@@ -2101,14 +2133,7 @@ eventHandler:SetScript("OnEvent", function()
 		AZSHelper:SkinChatWindow()
 		UpdatePortrait(player)
 		UpdateUnitFrame(player)
-		if BordoUIDB and BordoUIDB.hudPos and BordoUIDB.hudPos.point then
-			AZSHelper:RestorePosition(row, BordoUIDB.hudPos)
-		elseif AZSHelperDB and AZSHelperDB.rowPos and AZSHelperDB.rowPos.point then
-			AZSHelper:RestorePosition(row, AZSHelperDB.rowPos)
-		else
-			row:ClearAllPoints()
-			row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
-		end
+		RestoreHudPosition()
 		UI.xpBar:ClearAllPoints()
 		UI.xpBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
 		UI.xpBar:SetWidth(row:GetWidth() + 2 * (SECTION_GAP + FRAME_WIDTH))
@@ -2181,6 +2206,7 @@ function BordoUI_ResetThemeUI()
 	if PositionMicroButtons then PositionMicroButtons() end
 	if BordoUIDB then
 		BordoUIDB.hudPos = nil
+		BordoUIDB.centerHudPos = nil
 		BordoUIDB.bottomBarPos = nil
 		BordoUIDB.tallyPos = nil
 		BordoUIDB.microDockPos = nil
@@ -2190,6 +2216,7 @@ function BordoUI_ResetThemeUI()
 	end
 	if AZSHelperDB then
 		AZSHelperDB.rowPos = nil
+		AZSHelperDB.centerHudPos = nil
 		AZSHelperDB.bottomBarPos = nil
 		AZSHelperDB.tallyPos = nil
 		AZSHelperDB.microDockPos = nil

@@ -1120,28 +1120,29 @@ local function ShowJewelryTooltip(owner, itmData, isEq, slotLabel, anchorDir)
     local eqStr = itmData.equip;
     local descText = "";
 
-    if eqStr and eqStr ~= "" and (not bStr or not string.find(string.lower(eqStr), string.lower(string.gsub(bStr, "[%s%p_]", "")))) then
-        if bStr and bStr ~= "" then
-            descText = "|cff00ff66" .. bStr .. "|r\n|cffffffff" .. eqStr .. "|r";
-        else
-            descText = "|cffffffff" .. eqStr .. "|r";
-        end
-    elseif dStr and dStr ~= "" then
-        if string.find(dStr, "\n") or string.find(dStr, "Legendary") or string.find(dStr, "Equip:") then
-            if bStr and bStr ~= "" and not string.find(dStr, bStr, 1, true) then
-                descText = "|cff00ff66" .. bStr .. "|r\n" .. dStr;
-            else
-                descText = dStr;
-            end
-        else
-            if bStr and bStr ~= "" then
-                descText = "|cff00ff66" .. bStr .. "|r";
-            else
-                descText = "|cff00ff66" .. dStr .. "|r";
-            end
-        end
-    elseif bStr and bStr ~= "" then
+    local function CleanStat(s)
+        if not s then return ""; end
+        return string.lower(string.gsub(s, "[%s%p_]", ""));
+    end
+
+    local cBenefit = CleanStat(bStr);
+    local cEquip = CleanStat(eqStr);
+    local cDesc = CleanStat(dStr);
+
+    if bStr and bStr ~= "" then
         descText = "|cff00ff66" .. bStr .. "|r";
+        -- Only add eqStr or dStr if it provides genuinely distinct information and is not a duplicate stat line
+        if eqStr and eqStr ~= "" and cEquip ~= "" and cEquip ~= cBenefit and not string.find(cEquip, cBenefit, 1, true) then
+            descText = descText .. "\n|cffffffff" .. eqStr .. "|r";
+        elseif dStr and dStr ~= "" and cDesc ~= "" and cDesc ~= cBenefit and not string.find(cDesc, cBenefit, 1, true) then
+            if string.find(dStr, "\n") or string.find(dStr, "Legendary") or string.find(dStr, "Equip:") then
+                descText = descText .. "\n" .. dStr;
+            end
+        end
+    elseif eqStr and eqStr ~= "" then
+        descText = "|cffffffff" .. eqStr .. "|r";
+    elseif dStr and dStr ~= "" then
+        descText = "|cffffffff" .. dStr .. "|r";
     end
     jtDesc:SetText(descText);
 

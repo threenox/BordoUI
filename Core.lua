@@ -1,4 +1,4 @@
-﻿--[[
+--[[
     Bordo UI - Core (Core.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
     Modern UI Suite by Bordo
@@ -621,15 +621,19 @@ function BordoUI:ToggleMoveMode(enable)
                     local pt, _, relPt, x, y = f:GetPoint();
                     BordoUIDB = BordoUIDB or {};
                     if ( saveKey == "hudPos" ) then
-                        local centerX, centerY = f:GetCenter();
-                        local pos = {
-                            point = "CENTER",
-                            x = math.floor(centerX - UIParent:GetWidth() / 2 + 0.5),
-                            y = math.floor(centerY - UIParent:GetHeight() / 2 + 0.5),
-                        };
+                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
                         BordoUIDB.hudPos = pos;
+                        BordoUIDB.centerHudPos = pos;
                         AZSHelperDB = AZSHelperDB or {};
                         AZSHelperDB.rowPos = pos;
+                        AZSHelperDB.centerHudPos = pos;
+                        f:ClearAllPoints();
+                        f:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
+                    elseif ( saveKey == "meterPos" ) then
+                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
+                        BordoUIDB.meterPos = pos;
+                        BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
+                        BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
                     else
                         BordoUIDB[saveKey] = { point = pt, relativePoint = relPt, x = x, y = y };
                     end
