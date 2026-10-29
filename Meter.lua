@@ -147,6 +147,7 @@ local isMeterDragging = false
 local isMeterSizing = false
 local seatedOn
 local Draw -- forward declaration
+local Fit  -- forward declaration
 local strip
 local LayCells
 local bars = {}
@@ -216,111 +217,6 @@ local function UpdateMeterWidth(newWidth)
 	end
 end
 
--- Resize Corner Grip (Bottom-Right)
-meter:SetResizable(true)
-if meter.SetMinResize then
-	meter:SetMinResize(160, 60)
-	meter:SetMaxResize(480, 600)
-end
-
-local meterResizeGrip = CreateFrame("Button", "BordoUIMeterResizeGrip", meter)
-meterResizeGrip:SetWidth(16)
-meterResizeGrip:SetHeight(16)
-meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -1, 1)
-meterResizeGrip:SetFrameLevel(meter:GetFrameLevel() + 25)
-meterResizeGrip:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonUp")
-
-meterResizeGrip.lines = {}
-for rIdx = 1, 3 do
-	local line = meterResizeGrip:CreateTexture(nil, "OVERLAY")
-	line:SetTexture(FLAT)
-	line:SetVertexColor(1, 0.82, 0, 0.85)
-	line:SetHeight(2)
-	line:SetWidth(4 * rIdx + 2)
-	line:SetPoint("BOTTOMRIGHT", meterResizeGrip, "BOTTOMRIGHT", 0, (rIdx - 1) * 4)
-	table.insert(meterResizeGrip.lines, line)
-end
-
-meterResizeGrip:SetScript("OnEnter", function()
-	GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT")
-	GameTooltip:SetText("Resize Damage Meter", 1, 0.82, 0)
-	GameTooltip:AddDoubleLine("Current Scale:", string.format("%d%%", math.floor(BordoUI_GetMeterScale() * 100 + 0.5)), 1, 1, 1, 0.2, 1, 0.2)
-	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine("Left-Click Drag: Resize window width & height", 0.75, 0.75, 0.75)
-	GameTooltip:AddLine("Ctrl / Alt + Mouse Wheel: Smooth scale window", 0.75, 0.75, 0.75)
-	GameTooltip:AddLine("Right-Click: Reset to default size & scale", 0.85, 0.85, 0.3)
-	GameTooltip:Show()
-end)
-meterResizeGrip:SetScript("OnLeave", function()
-	GameTooltip:Hide()
-end)
-meterResizeGrip:SetScript("OnClick", function()
-	if arg1 == "RightButton" then
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.meterWidth = nil
-		BordoUIDB.meterLines = nil
-		BordoUIDB.meterScale = 1.0
-		BordoUIDB.meterPos = nil
-		BordoUIDB.meterIsCustom = nil
-		local settings = Settings()
-		if settings then
-			settings.meterPos = nil
-			settings.meterRight = nil
-			settings.meterBottom = nil
-		end
-		BordoUI_SetMeterScale(1.0)
-		UpdateMeterWidth(WIDTH)
-		seatedOn = nil
-		Fit()
-		if Draw then Draw() end
-		PlaySound("igMainMenuOptionCheckBoxOn")
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default layout & size.")
-	end
-end)
-meterResizeGrip:SetScript("OnMouseDown", function()
-	if arg1 == "LeftButton" then
-		isMeterSizing = true
-		GameTooltip:Hide()
-		meter:StartSizing("BOTTOMRIGHT")
-	end
-end)
-meterResizeGrip:SetScript("OnMouseUp", function()
-	if isMeterSizing then
-		isMeterSizing = false
-		meter:StopMovingOrSizing()
-		local w = meter:GetWidth()
-		if w and w >= 160 then
-			UpdateMeterWidth(w - 8)
-			BordoUIDB = BordoUIDB or {}
-			BordoUIDB.meterWidth = w
-		end
-		local h = meter:GetHeight()
-		local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
-		fitLines = math.max(3, math.min(MAX_LINES, fitLines))
-		SetLines(fitLines)
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.meterLines = fitLines
-		SavePlace()
-		if Draw then Draw() end
-	end
-end)
-
-meter:SetScript("OnSizeChanged", function()
-	if isMeterSizing then
-		local w = meter:GetWidth()
-		if w and w >= 160 then
-			UpdateMeterWidth(w - 8)
-		end
-		local h = meter:GetHeight()
-		if h and h >= 50 then
-			local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
-			fitLines = math.max(3, math.min(MAX_LINES, fitLines))
-			SetLines(fitLines)
-		end
-		if Draw then Draw() end
-	end
-end)
-
 local function Seat(key, point, relative, relativePoint, x, y)
 	if seatedOn ~= key then
 		seatedOn = key
@@ -329,7 +225,7 @@ local function Seat(key, point, relative, relativePoint, x, y)
 	end
 end
 
-local function Fit()
+Fit = function()
 	if isMeterDragging or isMeterSizing then
 		return
 	end
@@ -383,6 +279,98 @@ local function Fit()
 		SetLines(math.max(3, math.min(MAX_LINES, fit)))
 	end
 end
+
+-- Resize Corner Grip (Bottom-Right)
+meter:SetResizable(true)
+if meter.SetMinResize then
+	meter:SetMinResize(160, 60)
+	meter:SetMaxResize(480, 600)
+end
+
+local meterResizeGrip = CreateFrame("Button", "BordoUIMeterResizeGrip", meter)
+meterResizeGrip:SetWidth(16)
+meterResizeGrip:SetHeight(16)
+meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -1, 1)
+meterResizeGrip:SetFrameLevel(meter:GetFrameLevel() + 25)
+meterResizeGrip:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonUp")
+
+meterResizeGrip.lines = {}
+for rIdx = 1, 3 do
+	local line = meterResizeGrip:CreateTexture(nil, "OVERLAY")
+	line:SetTexture(FLAT)
+	line:SetVertexColor(1, 0.82, 0, 0.85)
+	line:SetHeight(2)
+	line:SetWidth(4 * rIdx + 2)
+	line:SetPoint("BOTTOMRIGHT", meterResizeGrip, "BOTTOMRIGHT", 0, (rIdx - 1) * 4)
+	table.insert(meterResizeGrip.lines, line)
+end
+
+meterResizeGrip:SetScript("OnClick", function()
+	if arg1 == "RightButton" then
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.meterWidth = nil
+		BordoUIDB.meterLines = nil
+		BordoUIDB.meterScale = 1.0
+		BordoUIDB.meterPos = nil
+		BordoUIDB.meterIsCustom = nil
+		local settings = Settings()
+		if settings then
+			settings.meterPos = nil
+			settings.meterRight = nil
+			settings.meterBottom = nil
+		end
+		BordoUI_SetMeterScale(1.0)
+		UpdateMeterWidth(WIDTH)
+		seatedOn = nil
+		Fit()
+		if Draw then Draw() end
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default layout & size.")
+	end
+end)
+meterResizeGrip:SetScript("OnMouseDown", function()
+	if arg1 == "LeftButton" then
+		isMeterSizing = true
+		meter:StartSizing("BOTTOMRIGHT")
+	end
+end)
+meterResizeGrip:SetScript("OnMouseUp", function()
+	if isMeterSizing then
+		isMeterSizing = false
+		meter:StopMovingOrSizing()
+		local w = meter:GetWidth()
+		if w and w >= 160 then
+			UpdateMeterWidth(w - 8)
+			BordoUIDB = BordoUIDB or {}
+			BordoUIDB.meterWidth = w
+		end
+		local h = meter:GetHeight()
+		local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+		fitLines = math.max(3, math.min(MAX_LINES, fitLines))
+		SetLines(fitLines)
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.meterLines = fitLines
+		SavePlace()
+		if Draw then Draw() end
+	end
+end)
+
+meter:SetScript("OnSizeChanged", function()
+	if isMeterSizing then
+		local w = meter:GetWidth()
+		if w and w >= 160 then
+			UpdateMeterWidth(w - 8)
+		end
+		local h = meter:GetHeight()
+		if h and h >= 50 then
+			local fitLines = math.floor((h - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+			fitLines = math.max(3, math.min(MAX_LINES, fitLines))
+			SetLines(fitLines)
+		end
+		if Draw then Draw() end
+	end
+end)
+
 local function StartMove()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 		isMeterDragging = true
