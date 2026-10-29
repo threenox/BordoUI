@@ -46,11 +46,15 @@ local defaults = {
     tableScale = 0.80,
     collapsed  = false,
     locked     = false, -- Global UI window lock
-    statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
+    hudPos     = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 },
+    centerHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 },
+    statsPos   = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -14 },
+    bossTrackerPos = { point = "TOPRIGHT", relativePoint = "TOPRIGHT", x = -12, y = -160 },
     multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
-    centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
-    encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
+    encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -132 },
+    choiceAdvisorPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -4 },
+    lootAlertPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -175 },
     tallyPos = nil, -- Defaults to centered under combat HUD
     microDockPos = nil, -- Defaults to bottom-right corner
     chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
@@ -73,9 +77,21 @@ local function InitDB()
             BordoUIDB[k] = v;
         end
     end
-    -- Migrate old positions to under-character HUD & non-overlapping Death Recap
-    if ( not BordoUIDB.centerHudPos or (BordoUIDB.centerHudPos.y and BordoUIDB.centerHudPos.y < 100) ) then
-        BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
+    -- Clean up legacy HUD positions (e.g. old BOTTOM y=200 anchor that pushed HUD down to bottom)
+    local defaultHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 };
+    if ( not BordoUIDB.hudPos or (BordoUIDB.hudPos.point == "BOTTOM" and BordoUIDB.hudPos.y and BordoUIDB.hudPos.y == 200) ) then
+        BordoUIDB.hudPos = defaultHudPos;
+    end
+    if ( not BordoUIDB.centerHudPos or (BordoUIDB.centerHudPos.point == "BOTTOM" and BordoUIDB.centerHudPos.y and BordoUIDB.centerHudPos.y == 200) ) then
+        BordoUIDB.centerHudPos = defaultHudPos;
+    end
+    if ( AZSHelperDB ) then
+        if ( not AZSHelperDB.rowPos or (AZSHelperDB.rowPos.point == "BOTTOM" and AZSHelperDB.rowPos.y and AZSHelperDB.rowPos.y == 200) ) then
+            AZSHelperDB.rowPos = defaultHudPos;
+        end
+        if ( not AZSHelperDB.centerHudPos or (AZSHelperDB.centerHudPos.point == "BOTTOM" and AZSHelperDB.centerHudPos.y and AZSHelperDB.centerHudPos.y == 200) ) then
+            AZSHelperDB.centerHudPos = defaultHudPos;
+        end
     end
     if ( not BordoUIDB.deathRecapPos or (BordoUIDB.deathRecapPos.x and BordoUIDB.deathRecapPos.x > -250) ) then
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
@@ -658,10 +674,12 @@ function BordoUI:ToggleMoveMode(enable)
     end
 end
 function BordoUI:ResetToDefaultLayout()
+    local defaultHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 };
     BordoUIDB = BordoUIDB or {};
-    BordoUIDB.hudPos = nil;
-    BordoUIDB.statsPos = nil;
-    BordoUIDB.bossTrackerPos = nil;
+    BordoUIDB.hudPos = defaultHudPos;
+    BordoUIDB.centerHudPos = defaultHudPos;
+    BordoUIDB.statsPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -14 };
+    BordoUIDB.bossTrackerPos = { point = "TOPRIGHT", relativePoint = "TOPRIGHT", x = -12, y = -160 };
     BordoUIDB.buildLeft = nil;
     BordoUIDB.buildTop = nil;
     BordoUIDB.buildPos = nil;
@@ -671,20 +689,20 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.bottomBarPos = nil;
     BordoUIDB.tallyPos = nil;
     BordoUIDB.microDockPos = nil;
-	BordoUIDB.tooltipPos = nil;
-	BordoUIDB.lootAlertPos = nil;
-    BordoUIDB.centerHudPos = nil;
+    BordoUIDB.tooltipPos = nil;
+    BordoUIDB.lootAlertPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -175 };
     BordoUIDB.multPanelPos = nil;
     BordoUIDB.nameplatesFramePos = nil;
-    BordoUIDB.encounterBarsPos = nil;
-    BordoUIDB.choiceAdvisorPos = nil;
+    BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -132 };
+    BordoUIDB.choiceAdvisorPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -4 };
+    BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 20 };
     if ( AZSHelperDB ) then
-        AZSHelperDB.rowPos = nil;
+        AZSHelperDB.rowPos = defaultHudPos;
+        AZSHelperDB.centerHudPos = defaultHudPos;
         AZSHelperDB.bottomBarPos = nil;
         AZSHelperDB.tallyPos = nil;
         AZSHelperDB.microDockPos = nil;
-		AZSHelperDB.tooltipPos = nil;
-        AZSHelperDB.centerHudPos = nil;
+        AZSHelperDB.tooltipPos = nil;
     end
 	if ( BordoUI_TooltipAnchor ) then
 		BordoUI_TooltipAnchor:ClearAllPoints();

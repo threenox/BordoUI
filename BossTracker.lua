@@ -847,7 +847,7 @@ function TrackerUI:ResetPosition()
     frame:ClearAllPoints();
     frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160);
     if ( BordoUIDB ) then
-        BordoUIDB.bossTrackerPos = nil;
+        BordoUIDB.bossTrackerPos = { point = "TOPRIGHT", relativePoint = "TOPRIGHT", x = -12, y = -160 };
     end
     if ( BordoUI_UpdateBuildPosition ) then
         BordoUI_UpdateBuildPosition();

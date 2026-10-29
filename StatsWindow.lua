@@ -754,7 +754,7 @@ function StatsUI:ResetPosition()
         critFrame:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -8);
     end
     if ( BordoUIDB ) then
-        BordoUIDB.statsPos = nil;
+        BordoUIDB.statsPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -14 };
         BordoUIDB.highestCritPos = nil;
     end
 end

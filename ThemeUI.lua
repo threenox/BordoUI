@@ -13,7 +13,7 @@ local FONT_BUMP = 0
 local BAR_BUTTONS = { 1, 2, 3, 4, 5, 6, 12 }     -- 12 is the = key (Racial ability)
 local BUTTON_SIZE = 36
 local BUTTON_GAP = 2
-local ROW_BELOW_CENTER = 150
+local ROW_BELOW_CENTER = 170
 local SECTION_GAP = 6
 local FRAME_WIDTH = 150
 local POWER_HEIGHT = 3
@@ -177,11 +177,12 @@ end
 local function RestoreHudPosition()
 	local pos = (BordoUIDB and (BordoUIDB.hudPos or BordoUIDB.centerHudPos))
 		or (AZSHelperDB and (AZSHelperDB.rowPos or AZSHelperDB.centerHudPos))
-	if pos and pos.point then
+	if pos and pos.point and not (pos.point == "BOTTOM" and pos.y and pos.y == 200) then
 		BordoUI:RestorePosition(row, pos)
 	else
 		row:ClearAllPoints()
 		row:SetPoint("CENTER", UIParent, "CENTER", 0, -ROW_BELOW_CENTER)
+		SaveHudPosition()
 	end
 	if UI.xpBar and UI.xpBar.ClearAllPoints then
 		UI.xpBar:ClearAllPoints()
@@ -2187,8 +2188,8 @@ function BordoUI_ResetThemeUI()
 	row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
 	UI.xpBar:ClearAllPoints()
 	UI.xpBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
-		UI.xpBar:SetWidth(row:GetWidth() + 2 * (SECTION_GAP + FRAME_WIDTH))
-		UI.xpBar:SetHeight(5)
+	UI.xpBar:SetWidth(row:GetWidth() + 2 * (SECTION_GAP + FRAME_WIDTH))
+	UI.xpBar:SetHeight(5)
 	UI.tallyFrame:ClearAllPoints()
 	UI.tallyFrame:SetPoint("TOP", UI.xpBar, "BOTTOM", 0, -4)
 	if UI.minimapDock then
@@ -2204,9 +2205,10 @@ function BordoUI_ResetThemeUI()
 		BordoUI.HighestCritFrame:SetPoint("TOPLEFT", BordoUI.StatsWindow.frame, "BOTTOMLEFT", 0, -8)
 	end
 	if PositionMicroButtons then PositionMicroButtons() end
+	local defaultHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 }
 	if BordoUIDB then
-		BordoUIDB.hudPos = nil
-		BordoUIDB.centerHudPos = nil
+		BordoUIDB.hudPos = defaultHudPos
+		BordoUIDB.centerHudPos = defaultHudPos
 		BordoUIDB.bottomBarPos = nil
 		BordoUIDB.tallyPos = nil
 		BordoUIDB.microDockPos = nil
@@ -2215,8 +2217,8 @@ function BordoUI_ResetThemeUI()
 		RestoreEncounterBarsPosition()
 	end
 	if AZSHelperDB then
-		AZSHelperDB.rowPos = nil
-		AZSHelperDB.centerHudPos = nil
+		AZSHelperDB.rowPos = defaultHudPos
+		AZSHelperDB.centerHudPos = defaultHudPos
 		AZSHelperDB.bottomBarPos = nil
 		AZSHelperDB.tallyPos = nil
 		AZSHelperDB.microDockPos = nil
