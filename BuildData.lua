@@ -20,52 +20,44 @@ BordoUI_BuildData.ClassOrder = {
     "HUNTER", "PALADIN", "WARRIOR", "MAGE", "WARLOCK", "ROGUE", "SHAMAN", "PRIEST", "DRUID"
 };
 
--- Base Class Starting Spells (Each class starts with 2 abilities on Action Bar Slots 1 and 2)
+-- Base Class Starting Spells (Each class starts with 1 universal core ability on Action Bar Slot 1)
+-- Secondary starting abilities (Action Bar Slot 2) are granted dynamically by talents and automatically detected live!
 BordoUI_BuildData.StarterSpells = {
     WARRIOR = {
-        name = "Cleave", key = "cleave", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_Cleave", desc = "Class starter ability #1. Sweeping strike that cuts through multiple foes.",
-        [1] = { name = "Cleave", key = "cleave", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_Cleave", desc = "Class starter ability #1. Sweeping strike that cuts through multiple foes.", slot = 1 },
-        [2] = { name = "Rend", key = "rend", school = "Physical", icon = "Interface\\Icons\\Ability_Gouge", desc = "Class starter ability #2. Bleeds target over time for physical damage.", slot = 2 },
+        name = "Cleave", key = "cleave", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_Cleave", desc = "Class starter ability. Sweeping strike that cuts through multiple foes.",
+        [1] = { name = "Cleave", key = "cleave", school = "Physical", icon = "Interface\\Icons\\Ability_Warrior_Cleave", desc = "Class starter ability. Sweeping strike that cuts through multiple foes.", slot = 1 },
     },
     PRIEST = {
-        name = "Smite", key = "smite", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_HolySmite", desc = "Class starter ability #1. Direct holy beam dealing focused damage.",
-        [1] = { name = "Smite", key = "smite", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_HolySmite", desc = "Class starter ability #1. Direct holy beam dealing focused damage.", slot = 1 },
-        [2] = { name = "Power Word: Shield", key = "pw_shield", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_PowerWordShield", desc = "Class starter ability #2. Protective shield absorbing damage.", slot = 2 },
+        name = "Smite", key = "smite", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_HolySmite", desc = "Class starter ability. Direct holy beam dealing focused damage.",
+        [1] = { name = "Smite", key = "smite", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_HolySmite", desc = "Class starter ability. Direct holy beam dealing focused damage.", slot = 1 },
     },
     PALADIN = {
-        name = "Judgement", key = "judgement", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_RighteousFury", desc = "Class starter ability #1. Frequent targeted holy burst.",
-        [1] = { name = "Judgement", key = "judgement", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_RighteousFury", desc = "Class starter ability #1. Frequent targeted holy burst.", slot = 1 },
-        [2] = { name = "Consecration", key = "consecration", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_InnerFire", desc = "Class starter ability #2. Consecrates ground beneath you.", slot = 2 },
+        name = "Judgement", key = "judgement", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_RighteousFury", desc = "Class starter ability. Frequent targeted holy burst.",
+        [1] = { name = "Judgement", key = "judgement", school = "Holy", icon = "Interface\\Icons\\Spell_Holy_RighteousFury", desc = "Class starter ability. Frequent targeted holy burst.", slot = 1 },
     },
     MAGE = {
-        name = "Fireball", key = "fireball", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_FlameBolt", desc = "Class starter ability #1. Incendiary projectile dealing direct and fire damage.",
-        [1] = { name = "Fireball", key = "fireball", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_FlameBolt", desc = "Class starter ability #1. Incendiary projectile dealing direct and fire damage.", slot = 1 },
-        [2] = { name = "Frostbolt", key = "frostbolt", school = "Frost", icon = "Interface\\Icons\\Spell_Frost_FrostBolt02", desc = "Class starter ability #2. Freezing frost projectile dealing slowing frost damage.", slot = 2 },
+        name = "Fireball", key = "fireball", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_FlameBolt", desc = "Class starter ability. Incendiary projectile dealing direct and fire damage.",
+        [1] = { name = "Fireball", key = "fireball", school = "Fire", icon = "Interface\\Icons\\Spell_Fire_FlameBolt", desc = "Class starter ability. Incendiary projectile dealing direct and fire damage.", slot = 1 },
     },
     HUNTER = {
-        name = "Auto Shot", key = "auto_shot", school = "Physical", icon = "Interface\\Icons\\Ability_Whirlwind", desc = "Class starter ability #1. Automatic ranged attack firing arrows.",
-        [1] = { name = "Auto Shot", key = "auto_shot", school = "Physical", icon = "Interface\\Icons\\Ability_Whirlwind", desc = "Class starter ability #1. Automatic ranged attack firing arrows.", slot = 1 },
-        [2] = { name = "Serpent Sting", key = "serpent_sting", school = "Nature", icon = "Interface\\Icons\\Ability_Hunter_Quickshot", desc = "Class starter ability #2. Shoots target with venomous nature sting.", slot = 2 },
+        name = "Auto Shot", key = "auto_shot", school = "Physical", icon = "Interface\\Icons\\Ability_Whirlwind", desc = "Class starter ability. Automatic ranged attack firing arrows.",
+        [1] = { name = "Auto Shot", key = "auto_shot", school = "Physical", icon = "Interface\\Icons\\Ability_Whirlwind", desc = "Class starter ability. Automatic ranged attack firing arrows.", slot = 1 },
     },
     ROGUE = {
-        name = "Sinister Strike", key = "sinister_strike", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice", desc = "Class starter ability #1. Primary combo generator.",
-        [1] = { name = "Sinister Strike", key = "sinister_strike", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice", desc = "Class starter ability #1. Primary combo generator.", slot = 1 },
-        [2] = { name = "Eviscerate", key = "eviscerate", school = "Physical", icon = "Interface\\Icons\\Ability_Rogue_Eviscerate", desc = "Class starter ability #2. Finishing attack dealing damage per combo point.", slot = 2 },
+        name = "Sinister Strike", key = "sinister_strike", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice", desc = "Class starter ability. Primary combo generator.",
+        [1] = { name = "Sinister Strike", key = "sinister_strike", school = "Physical", icon = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice", desc = "Class starter ability. Primary combo generator.", slot = 1 },
     },
     WARLOCK = {
-        name = "Shadow Bolt", key = "shadow_bolt", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_ShadowBolt", desc = "Class starter ability #1. Premier shadow projectile.",
-        [1] = { name = "Shadow Bolt", key = "shadow_bolt", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_ShadowBolt", desc = "Class starter ability #1. Premier shadow projectile.", slot = 1 },
-        [2] = { name = "Corruption", key = "corruption", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_AbominationExplosion", desc = "Class starter ability #2. Curses target with devastating shadow decay.", slot = 2 },
+        name = "Shadow Bolt", key = "shadow_bolt", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_ShadowBolt", desc = "Class starter ability. Premier shadow projectile.",
+        [1] = { name = "Shadow Bolt", key = "shadow_bolt", school = "Shadow", icon = "Interface\\Icons\\Spell_Shadow_ShadowBolt", desc = "Class starter ability. Premier shadow projectile.", slot = 1 },
     },
     SHAMAN = {
-        name = "Lightning Bolt", key = "lightning_bolt", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Lightning", desc = "Class starter ability #1. Electrical nature projectile.",
-        [1] = { name = "Lightning Bolt", key = "lightning_bolt", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Lightning", desc = "Class starter ability #1. Electrical nature projectile.", slot = 1 },
-        [2] = { name = "Earth Shock", key = "earth_shock", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_EarthShock", desc = "Class starter ability #2. Instant elemental shock dealing nature damage.", slot = 2 },
+        name = "Lightning Bolt", key = "lightning_bolt", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Lightning", desc = "Class starter ability. Electrical nature projectile.",
+        [1] = { name = "Lightning Bolt", key = "lightning_bolt", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_Lightning", desc = "Class starter ability. Electrical nature projectile.", slot = 1 },
     },
     DRUID = {
-        name = "Wrath", key = "wrath", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_AbolishPoison", desc = "Class starter ability #1. Quick nature bolt.",
-        [1] = { name = "Wrath", key = "wrath", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_AbolishPoison", desc = "Class starter ability #1. Quick nature bolt.", slot = 1 },
-        [2] = { name = "Moonfire", key = "moonfire", school = "Arcane", icon = "Interface\\Icons\\Spell_Nature_StarFall", desc = "Class starter ability #2. Instant arcane lunar burn.", slot = 2 },
+        name = "Wrath", key = "wrath", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_AbolishPoison", desc = "Class starter ability. Quick nature bolt.",
+        [1] = { name = "Wrath", key = "wrath", school = "Nature", icon = "Interface\\Icons\\Spell_Nature_AbolishPoison", desc = "Class starter ability. Quick nature bolt.", slot = 1 },
     },
 };
 
@@ -2733,7 +2725,11 @@ function BordoUI_GetClassBuilds(classKey)
             };
         end
                 local b = BordoUIDB.customBuilds[upper][idx];
-        local starter = BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[upper];
+        local baseStarter = BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[upper];
+        local liveStarters = BordoUIDB.liveStarters and BordoUIDB.liveStarters[upper];
+        local st1 = (liveStarters and liveStarters.starter1) or (baseStarter and (baseStarter[1] or baseStarter));
+        local st2 = (liveStarters and liveStarters.starter2);
+
         if b and b.spells then
             for sIdx = 1, 6 do
                 local sp = b.spells[sIdx];
@@ -2741,12 +2737,9 @@ function BordoUI_GetClassBuilds(classKey)
                     sp.rankMax = 8;
                 end
             end
-            -- Ensure class starter spells are in build setup (Starter 1 in Slot #6, Starter 2 in Slot #5)
-            if starter then
-                local st1 = starter[1] or starter;
-                local st2 = starter[2];
 
-                -- Check Starter 1
+            -- Starter 1 -> Slot #6 (or wherever placed)
+            if st1 then
                 local hasSt1 = false;
                 for sIdx = 1, 6 do
                     local sp = b.spells[sIdx];
@@ -2758,40 +2751,52 @@ function BordoUI_GetClassBuilds(classKey)
                 end
                 if not hasSt1 and not (b.clearedSlots and b.clearedSlots[6]) then
                     b.spells[6] = {
-                        key = st1.key,
+                        key = st1.key or string.lower(string.gsub(st1.name, "[%s%p_]", "")),
                         name = st1.name,
                         icon = st1.icon,
-                        school = st1.school,
+                        school = st1.school or "Physical",
                         prio = 6,
                         rankMax = 8,
                         reason = st1.desc or "Class starter ability #1 (Action Bar Slot 1)",
                         isStarter = true,
                     };
                 end
+            end
 
-                -- Check Starter 2
-                if st2 then
-                    local hasSt2 = false;
-                    for sIdx = 1, 6 do
-                        local sp = b.spells[sIdx];
-                        if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
-                            hasSt2 = true;
-                            sp.isStarter = true;
-                            break;
-                        end
+            -- Starter 2 -> Slot #5 (ONLY if player actually has a live 2nd starter detected!)
+            if st2 then
+                local hasSt2 = false;
+                for sIdx = 1, 6 do
+                    local sp = b.spells[sIdx];
+                    if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
+                        hasSt2 = true;
+                        sp.isStarter = true;
+                        break;
                     end
-                    if not hasSt2 and not (b.clearedSlots and b.clearedSlots[5]) and not b.spells[5] then
-                        b.spells[5] = {
-                            key = st2.key,
-                            name = st2.name,
-                            icon = st2.icon,
-                            school = st2.school,
-                            prio = 5,
-                            rankMax = 8,
-                            reason = st2.desc or "Class starter ability #2 (Action Bar Slot 2)",
-                            isStarter = true,
-                        };
+                end
+                if not hasSt2 and not (b.clearedSlots and b.clearedSlots[5]) then
+                    b.spells[5] = {
+                        key = st2.key or string.lower(string.gsub(st2.name, "[%s%p_]", "")),
+                        name = st2.name,
+                        icon = st2.icon,
+                        school = st2.school or "Physical",
+                        prio = 5,
+                        rankMax = 8,
+                        reason = st2.desc or "Class starter ability #2 (Action Bar Slot 2)",
+                        isStarter = true,
+                    };
+                end
+                -- Remove st2 from slots 1..4 if duplicate
+                for s = 1, 4 do
+                    local sp = b.spells[s];
+                    if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
+                        b.spells[s] = nil;
                     end
+                end
+            else
+                -- No 2nd starter: Clear any leftover fake starter in slot 5 from old versions
+                if b.spells[5] and b.spells[5].isStarter then
+                    b.spells[5] = nil;
                 end
             end
         end
@@ -4100,7 +4105,7 @@ BordoUI_Catalog.Jewelry = {
                     icon = "Interface\\Icons\\INV_Jewelry_Amulet_05", quality = 5, benefit = "Kills explode for 15% HP", desc = "Enemies you kill explode for 15% of their max health" },
     { slotType = "NECK", name = "Jeklik's Opaline Talisman", icon = "Interface\\Icons\\INV_Jewelry_Necklace_03", quality = 3, benefit = "3% Leech, +1.0 Heal on Kill", desc = "3% of damage dealt heals\nEach kill heals 1.0" },
     { slotType = "NECK", name = "Malice Stone Pendant", icon = "Interface\\Icons\\INV_Jewelry_Necklace_29", quality = 4, benefit = "20% Cast Twice, -8% CD", desc = "20% chance to cast twice\n-8% cooldowns" },
-    { slotType = "NECK", name = "Mark of Fordring", icon = "Interface\\Icons\\INV_Jewelry_Talisman_07", quality = 1, benefit = "+15% Damage", desc = "+15% damage" },
+    { slotType = "NECK", name = "Mark of Fordring", icon = "Interface\\Icons\\INV_Jewelry_Talisman_07", quality = 1, benefit = "+15% Damage" },
     { slotType = "NECK", name = "Medallion of Steadfast Might",
                     icon = "Interface\\Icons\\INV_Jewelry_Amulet_03", quality = 3, benefit = "+10% Red, +15% HP, Thorns", desc = "+10% damage reduction\n+15% max health\nMelee attackers take 100% of their damage" },
     { slotType = "NECK", name = "Onyxia Tooth Pendant",
@@ -4108,7 +4113,7 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", name = "Pendant of the Fallen Dragon", icon = "Interface\\Icons\\INV_Jewelry_Necklace_12", quality = 4, benefit = "Cheat Death 60s, +20% HP, +5 HP/s", desc = "A killing blow leaves you at 50% health, once every 60 sec\n+20% max health\n+5.0 health per second" },
     { slotType = "NECK", name = "Prestor's Talisman of Connivery", icon = "Interface\\Icons\\INV_Jewelry_Necklace_17", quality = 2, benefit = "+16% Damage, +4% Crit", desc = "+16% damage\n+4% critical strike" },
     { slotType = "NECK", name = "Pristine Enchanted South Seas Kelp", icon = "Interface\\Icons\\INV_Jewelry_Necklace_26", quality = 1, benefit = "+30% Luck, +25% Gold", desc = "+30% luck\n+25% gold" },
-    { slotType = "NECK", name = "Talvash's Enhancing Necklace", icon = "Interface\\Icons\\INV_Jewelry_Necklace_02", quality = 1, benefit = "-10% Cooldowns", desc = "-10% cooldowns" },
+    { slotType = "NECK", name = "Talvash's Enhancing Necklace", icon = "Interface\\Icons\\INV_Jewelry_Necklace_02", quality = 1, benefit = "-10% Cooldowns" },
     { slotType = "NECK", name = "The Eye of Hakkar", icon = "Interface\\Icons\\INV_Jewelry_Necklace_22", quality = 3, benefit = "+5% Crit, Crits burn/bleed 80%", desc = "+5% critical strike\nCrits burn and bleed for 80% more over 4 sec" },
     { slotType = "NECK", name = "Woven Ivy Necklace", icon = "Interface\\Icons\\INV_Misc_Herb_15", quality = 2, benefit = "+6.0 HP/s, +12% HP, +12% Spd", desc = "+6.0 health per second\n+12% max health\n+12% movement speed" },
 
@@ -4116,41 +4121,41 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "RING", name = "Archimtiros' Ring of Reckoning",
                     icon = "Interface\\Icons\\INV_Jewelry_Ring_40", quality = 3, benefit = "+4.4% Dmg Red, +18% Max HP", desc = "+4.4% damage reduction, +18% max health" },
     { slotType = "RING", name = "Band of Accuria",
-                    icon = "Interface\\Icons\\INV_Jewelry_Ring_03", quality = 4, benefit = "+26% Damage", desc = "+26% damage" },
+                    icon = "Interface\\Icons\\INV_Jewelry_Ring_03", quality = 4, benefit = "+26% Damage" },
     { slotType = "RING", name = "Blooddrinker's Band",
                     icon = "Interface\\Icons\\INV_Jewelry_Ring_49", quality = 3, benefit = "1.5% Leech", desc = "1.5% of damage dealt heals" },
     { slotType = "RING", name = "Heavy Dark Iron Ring",
-                    icon = "Interface\\Icons\\INV_Jewelry_Ring_14", quality = 2, benefit = "+25% Max HP", desc = "+25% max health" },
+                    icon = "Interface\\Icons\\INV_Jewelry_Ring_14", quality = 2, benefit = "+25% Max HP" },
     { slotType = "RING", name = "Master Dragonslayer's Ring",
                     icon = "Interface\\Icons\\INV_Jewelry_Ring_41", quality = 4, benefit = "+6% Critical Strike", desc = "+6% critical strike chance" },
     { slotType = "RING", name = "Quick Strike Ring",
-                    icon = "Interface\\Icons\\INV_Jewelry_Ring_07", quality = 4, benefit = "-14% Cooldowns", desc = "-14% cooldowns" },
+                    icon = "Interface\\Icons\\INV_Jewelry_Ring_07", quality = 4, benefit = "-14% Cooldowns" },
     { slotType = "RING", name = "Ring of Spell Power",
-                    icon = "Interface\\Icons\\INV_Jewelry_Ring_38", quality = 3, benefit = "+21% Area of Effect", desc = "+21% area of effect" },
-    { slotType = "RING", name = "Ring of the Devoured", icon = "Interface\\Icons\\INV_Jewelry_Ring_AhnQiraj_05", quality = 4, benefit = "+2.2 Health/sec", desc = "+2.2 health per second" },
+                    icon = "Interface\\Icons\\INV_Jewelry_Ring_38", quality = 3, benefit = "+21% Area of Effect" },
+    { slotType = "RING", name = "Ring of the Devoured", icon = "Interface\\Icons\\INV_Jewelry_Ring_AhnQiraj_05", quality = 4, benefit = "+2.2 Health/sec" },
     { slotType = "RING", name = "Seal of the Damned", icon = "Interface\\Icons\\INV_Jewelry_Ring_51", quality = 4, benefit = "Faster DoT ticks", desc = "Faster damage over time" },
 
     -- UNIVERSAL TRINKETS (Authentic Azeroth Survivors Codex - Base Rank I)
     { slotType = "TRINKET", name = "Blackhand's Breadth",
-                    icon = "Interface\\Icons\\INV_Misc_ArmorKit_09", quality = 3, benefit = "+29% Critical Strike Damage", desc = "+29% critical strike damage" },
-    { slotType = "TRINKET", name = "Carrot on a Stick", icon = "Interface\\Icons\\INV_Misc_Food_54", quality = 2, benefit = "+12% Movement Speed", desc = "+12% movement speed" },
+                    icon = "Interface\\Icons\\INV_Misc_ArmorKit_09", quality = 3, benefit = "+29% Critical Strike Damage" },
+    { slotType = "TRINKET", name = "Carrot on a Stick", icon = "Interface\\Icons\\INV_Misc_Food_54", quality = 2, benefit = "+12% Movement Speed" },
     { slotType = "TRINKET", name = "Earthstrike",
-                    icon = "Interface\\Icons\\Spell_Nature_AbolishMagic", quality = 4, benefit = "+20% Damage", desc = "+20% damage" },
-    { slotType = "TRINKET", name = "Gnomish Universal Remote", icon = "Interface\\Icons\\INV_Misc_Gear_08", quality = 2, benefit = "+52% Pickup Range", desc = "+52% pickup range" },
+                    icon = "Interface\\Icons\\Spell_Nature_AbolishMagic", quality = 4, benefit = "+20% Damage" },
+    { slotType = "TRINKET", name = "Gnomish Universal Remote", icon = "Interface\\Icons\\INV_Misc_Gear_08", quality = 2, benefit = "+52% Pickup Range" },
     { slotType = "TRINKET", name = "Hand of Justice",
                     icon = "Interface\\Icons\\INV_Jewelry_Talisman_01", quality = 4, benefit = "9% Chance to Cast Twice", desc = "9% chance to cast twice" },
-    { slotType = "TRINKET", name = "Horn of the Warchief", icon = "Interface\\Icons\\INV_Misc_Horn_01", quality = 3, benefit = "Buffs 22% Stronger", desc = "Buffs 22% stronger" },
-    { slotType = "TRINKET", name = "Insignia of the Horde", icon = "Interface\\Icons\\INV_Jewelry_TrinketPVP_02", quality = 3, benefit = "+18% Experience", desc = "+18% experience" },
+    { slotType = "TRINKET", name = "Horn of the Warchief", icon = "Interface\\Icons\\INV_Misc_Horn_01", quality = 3, benefit = "Buffs 22% Stronger" },
+    { slotType = "TRINKET", name = "Insignia of the Horde", icon = "Interface\\Icons\\INV_Jewelry_TrinketPVP_02", quality = 3, benefit = "+18% Experience" },
     { slotType = "TRINKET", name = "Lifegiving Gem",
-                    icon = "Interface\\Icons\\INV_Misc_Gem_Pearl_05", quality = 4, benefit = "+20% Max HP", desc = "+20% max health" },
-    { slotType = "TRINKET", name = "Major Soulstone", icon = "Interface\\Icons\\INV_Misc_Orb_04", quality = 4, benefit = "+1 Return to Life", desc = "+1 return to life" },
-    { slotType = "TRINKET", name = "Mark of the Chosen", icon = "Interface\\Icons\\INV_Jewelry_Talisman_08", quality = 2, benefit = "+22% Luck", desc = "+22% luck" },
+                    icon = "Interface\\Icons\\INV_Misc_Gem_Pearl_05", quality = 4, benefit = "+20% Max HP" },
+    { slotType = "TRINKET", name = "Major Soulstone", icon = "Interface\\Icons\\INV_Misc_Orb_04", quality = 4, benefit = "+1 Return to Life" },
+    { slotType = "TRINKET", name = "Mark of the Chosen", icon = "Interface\\Icons\\INV_Jewelry_Talisman_08", quality = 2, benefit = "+22% Luck" },
     { slotType = "TRINKET", name = "Onyxia Blood Talisman", icon = "Interface\\Icons\\Spell_Shadow_LifeDrain", quality = 4, benefit = "Each kill heals 3.0", desc = "Each kill heals 3.0" },
-    { slotType = "TRINKET", name = "Royal Seal of Eldre'Thalas", icon = "Interface\\Icons\\INV_Jewelry_Talisman_10", quality = 3, benefit = "+38% Gold", desc = "+38% gold" },
+    { slotType = "TRINKET", name = "Royal Seal of Eldre'Thalas", icon = "Interface\\Icons\\INV_Jewelry_Talisman_10", quality = 3, benefit = "+38% Gold" },
     { slotType = "TRINKET", name = "Star of Mystaria",
                     icon = "Interface\\Icons\\INV_Enchant_EssenceMagicLarge", quality = 3, benefit = "+25% Max HP, +4% Dmg Red", desc = "+25% max health, +4% damage reduction" },
     { slotType = "TRINKET", name = "Talisman of Ephemeral Power",
-                    icon = "Interface\\Icons\\INV_Misc_StoneTablet_11", quality = 4, benefit = "-10% Cooldowns", desc = "-10% cooldowns" },
+                    icon = "Interface\\Icons\\INV_Misc_StoneTablet_11", quality = 4, benefit = "-10% Cooldowns" },
 
     -- CLASS-SPECIFIC LEGENDARY NECKLACES (Remakes class spells)
     -- PALADIN Legendary Amulets

@@ -153,6 +153,18 @@ local KEY_TO_NAME_MAP = {
     ["judgement"]           = "Judgement",
     ["cleave"]              = "Cleave",
     ["rend"]                = "Rend",
+    ["shield_slam"]         = "Shield Slam",
+    ["bloodthirst"]         = "Bloodthirst",
+    ["mortal_strike"]       = "Mortal Strike",
+    ["whirlwind"]           = "Whirlwind",
+    ["thunder_clap"]        = "Thunder Clap",
+    ["battle_shout"]        = "Battle Shout",
+    ["shield_block"]        = "Shield Block",
+    ["revenge"]             = "Revenge",
+    ["execute"]             = "Execute",
+    ["sweeping_strikes"]    = "Sweeping Strikes",
+    ["overpower"]           = "Overpower",
+    ["slam"]                = "Slam",
 };
 
 local function SpellKeyToName(key)
@@ -166,27 +178,245 @@ local function SpellKeyToName(key)
     return res;
 end
 
+-- Resolve spell details from an action slot (checks tooltip, AZS_SPELLS, and class spell tables)
+local function BordoUI_ResolveSpellFromAction(actSlot, pClass)
+    if not actSlot or actSlot < 1 or actSlot > 12 then return nil; end
+    local aName, aTex = GetActionSlotSpell(actSlot);
+    local resName = aName or "";
+    local resTex = aTex;
+    local resKey = "";
+
+    -- 1. Check AZS_SPELLS managed by Azeroth Survivors engine
+    if AZS_SPELLS and table.getn(AZS_SPELLS) > 0 then
+        local total = table.getn(AZS_SPELLS);
+        local entry = nil;
+        if actSlot == 12 then
+            entry = AZS_SPELLS[total];
+        elseif actSlot < total and actSlot <= 6 then
+            entry = AZS_SPELLS[actSlot];
+        end
+        if entry then
+            local rawKey = entry.key or entry[1];
+            if rawKey and rawKey ~= "" then resKey = rawKey; end
+            local rawSpell = entry.spell or entry[2];
+            if type(rawSpell) == "string" and rawSpell ~= "" then
+                if resName == "" then resName = rawSpell; end
+            elseif type(rawSpell) == "number" and GetSpellInfo then
+                local sName, _, sIcon = GetSpellInfo(rawSpell);
+                if sName and sName ~= "" and resName == "" then resName = sName; end
+                if sIcon and (not resTex or resTex == "") then resTex = sIcon; end
+            end
+            local eIcon = entry.icon or entry[2];
+            if eIcon and type(eIcon) == "string" and (not resTex or resTex == "") then
+                resTex = eIcon;
+            end
+        end
+    end
+
+    -- 2. Translate key if name is still empty
+    if resName == "" and resKey ~= "" then
+        resName = SpellKeyToName(resKey);
+    end
+
+    -- 3. Lookup against class spell table by texture
+    local cUpper = pClass and string.upper(pClass);
+    local classSpells = cUpper and BordoUI_BuildData and BordoUI_BuildData.Spells and BordoUI_BuildData.Spells[cUpper];
+    if (resName == "" or not resTex) and classSpells and resTex then
+        for _, spDef in ipairs(classSpells) do
+            if spDef.icon and IconsMatch(spDef.icon, resTex) then
+                if resName == "" then resName = spDef.name; end
+                if not resTex or resTex == "" then resTex = spDef.icon; end
+                break;
+            end
+        end
+    end
+
+    local baseSt = cUpper and BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
+    if baseSt and resTex and IconsMatch(baseSt.icon, resTex) then
+        if resName == "" then resName = baseSt.name; end
+    end
+
+    if resName ~= "" or (resTex and resTex ~= "") then
+        local foundSchool = "Physical";
+        if classSpells then
+            for _, spDef in ipairs(classSpells) do
+                if (resName ~= "" and spDef.name == resName) or (resTex and IconsMatch(spDef.icon, resTex)) then
+                    foundSchool = spDef.school or foundSchool;
+                    if resName == "" then resName = spDef.name; end
+                    if not resTex or resTex == "" then resTex = spDef.icon; end
+                    break;
+                end
+            end
+        end
+        return {
+            name = resName ~= "" and resName or "Ability",
+            icon = resTex or "Interface\\Icons\\INV_Misc_QuestionMark",
+            key = resKey ~= "" and resKey or CanonicalSpellKey(resName),
+            school = foundSchool,
+            isStarter = true,
+        };
+    end
+
+    return nil;
+end
+
+-- Automatic live detection of starter spells from character action bar
+function BordoUI_DetectLiveStarters()
+    if not UnitClass then return; end
+    local _, pClass = UnitClass("player");
+    if not pClass or pClass == "" then return; end
+    pClass = string.upper(pClass);
+
+    BordoUIDB = BordoUIDB or {};
+    BordoUIDB.liveStarters = BordoUIDB.liveStarters or {};
+    local curLive = BordoUIDB.liveStarters[pClass] or {};
+
+    -- Run start conditions:
+    -- Level <= 1, OR Action Buttons 3..6 all empty, OR AZS_SPELLS <= 3
+    local isRunStart = false;
+    local pLevel = UnitLevel and UnitLevel("player");
+    if pLevel and pLevel <= 1 then
+        isRunStart = true;
+    end
+    if not isRunStart and GetActionTexture then
+        if not GetActionTexture(3) and not GetActionTexture(4) and not GetActionTexture(5) and not GetActionTexture(6) then
+            isRunStart = true;
+        end
+    end
+    if not isRunStart and AZS_SPELLS then
+        local total = table.getn(AZS_SPELLS);
+        if total >= 1 and total <= 3 then
+            isRunStart = true;
+        end
+    end
+
+    if isRunStart then
+        -- 1. Starter 1 (Slot 1)
+        local s1 = BordoUI_ResolveSpellFromAction(1, pClass);
+        if not s1 then
+            local base = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[pClass];
+            if base then
+                s1 = {
+                    name = base.name,
+                    icon = base.icon,
+                    key = base.key or CanonicalSpellKey(base.name),
+                    school = base.school or "Physical",
+                    isStarter = true,
+                };
+            end
+        end
+        if s1 then
+            s1.isStarter = true;
+            curLive.starter1 = s1;
+        end
+
+        -- 2. Starter 2 (Slot 2) - Only if character actually has an ability in Slot 2!
+        local hasSlot2 = false;
+        if GetActionTexture and GetActionTexture(2) then
+            hasSlot2 = true;
+        elseif AZS_SPELLS and table.getn(AZS_SPELLS) >= 3 then
+            hasSlot2 = true;
+        end
+
+        if hasSlot2 then
+            local s2 = BordoUI_ResolveSpellFromAction(2, pClass);
+            if s2 then
+                s2.isStarter = true;
+                curLive.starter2 = s2;
+            else
+                curLive.starter2 = nil;
+            end
+        else
+            curLive.starter2 = nil;
+        end
+
+        BordoUIDB.liveStarters[pClass] = curLive;
+
+        -- Automatically sync custom builds for this class
+        if BordoUIDB.customBuilds and BordoUIDB.customBuilds[pClass] then
+            for idx = 1, 3 do
+                local cb = BordoUIDB.customBuilds[pClass][idx];
+                if cb and cb.spells then
+                    -- Starter 1 in Slot 6
+                    if curLive.starter1 and not (cb.clearedSlots and cb.clearedSlots[6]) then
+                        cb.spells[6] = {
+                            key = curLive.starter1.key or CanonicalSpellKey(curLive.starter1.name),
+                            name = curLive.starter1.name,
+                            icon = curLive.starter1.icon,
+                            school = curLive.starter1.school or "Physical",
+                            prio = 6,
+                            rankMax = 8,
+                            reason = "Class starter ability #1 (Action Bar Slot 1)",
+                            isStarter = true,
+                        };
+                    end
+
+                    -- Starter 2 in Slot 5
+                    if curLive.starter2 then
+                        cb.spells[5] = {
+                            key = curLive.starter2.key or CanonicalSpellKey(curLive.starter2.name),
+                            name = curLive.starter2.name,
+                            icon = curLive.starter2.icon,
+                            school = curLive.starter2.school or "Physical",
+                            prio = 5,
+                            rankMax = 8,
+                            reason = "Class starter ability #2 (Action Bar Slot 2)",
+                            isStarter = true,
+                        };
+                        -- Clean duplicates from draft slots 1..4
+                        for s = 1, 4 do
+                            local sp = cb.spells[s];
+                            if sp and (sp.name == curLive.starter2.name or (sp.key and sp.key == curLive.starter2.key)) then
+                                cb.spells[s] = nil;
+                            end
+                        end
+                    else
+                        -- No 2nd starter: clear slot 5 if it was marked as a starter
+                        if cb.spells[5] and cb.spells[5].isStarter then
+                            cb.spells[5] = nil;
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function IsClassStarter(className, name, key, icon)
     if not className then return false, 0, nil; end
     local cUpper = string.upper(className);
+
+    -- 1. Check live detected starters for this character
+    if BordoUIDB and BordoUIDB.liveStarters and BordoUIDB.liveStarters[cUpper] then
+        local live = BordoUIDB.liveStarters[cUpper];
+        local cName = name and CanonicalSpellKey(name) or "";
+        local cKey = key and CanonicalSpellKey(key) or "";
+
+        if live.starter1 then
+            local st1 = live.starter1;
+            if (name and st1.name == name) or (cName ~= "" and CanonicalSpellKey(st1.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st1.key) == cKey) or (icon and st1.icon and IconsMatch(st1.icon, icon)) then
+                return true, 1, st1;
+            end
+        end
+        if live.starter2 then
+            local st2 = live.starter2;
+            if (name and st2.name == name) or (cName ~= "" and CanonicalSpellKey(st2.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st2.key) == cKey) or (icon and st2.icon and IconsMatch(st2.icon, icon)) then
+                return true, 2, st2;
+            end
+        end
+    end
+
+    -- 2. Fallback to base static starter #1
     local starter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
-    if not starter then return false, 0, nil; end
-    local st1 = starter[1] or starter;
-    local st2 = starter[2];
-
-    local cName = name and CanonicalSpellKey(name) or "";
-    local cKey = key and CanonicalSpellKey(key) or "";
-
-    if st1 then
+    if starter then
+        local st1 = starter[1] or starter;
+        local cName = name and CanonicalSpellKey(name) or "";
+        local cKey = key and CanonicalSpellKey(key) or "";
         if (name and st1.name == name) or (cName ~= "" and CanonicalSpellKey(st1.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st1.key) == cKey) or (icon and st1.icon and IconsMatch(st1.icon, icon)) then
             return true, 1, st1;
         end
     end
-    if st2 then
-        if (name and st2.name == name) or (cName ~= "" and CanonicalSpellKey(st2.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st2.key) == cKey) or (icon and st2.icon and IconsMatch(st2.icon, icon)) then
-            return true, 2, st2;
-        end
-    end
+
     return false, 0, nil;
 end
 
@@ -196,33 +426,38 @@ local function GetCustomBuild(classKey, buildIdx)
     if idx < 1 or idx > 3 then idx = 1; end
     local builds = BordoUI_GetClassBuilds(cUpper);
     local cb = builds and builds[idx];
-    local starter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
-    if cb and cb.spells and starter then
-        local st1 = starter[1] or starter;
-        local st2 = starter[2];
+    local liveStarters = BordoUIDB and BordoUIDB.liveStarters and BordoUIDB.liveStarters[cUpper];
+    local baseStarter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
+    local st1 = (liveStarters and liveStarters.starter1) or (baseStarter and (baseStarter[1] or baseStarter));
+    local st2 = (liveStarters and liveStarters.starter2);
 
-        local hasSt1 = false;
-        for sIdx = 1, 6 do
-            local sp = cb.spells[sIdx];
-            if sp and (sp.name == st1.name or (sp.key and sp.key == st1.key)) then
-                hasSt1 = true;
-                sp.isStarter = true;
-                break;
+    if cb and cb.spells then
+        -- Starter 1 in Slot 6
+        if st1 then
+            local hasSt1 = false;
+            for sIdx = 1, 6 do
+                local sp = cb.spells[sIdx];
+                if sp and (sp.name == st1.name or (sp.key and sp.key == st1.key)) then
+                    hasSt1 = true;
+                    sp.isStarter = true;
+                    break;
+                end
+            end
+            if not hasSt1 and not (cb.clearedSlots and cb.clearedSlots[6]) then
+                cb.spells[6] = {
+                    key = st1.key or CanonicalSpellKey(st1.name),
+                    name = st1.name,
+                    icon = st1.icon,
+                    school = st1.school or "Physical",
+                    prio = 6,
+                    rankMax = 8,
+                    reason = st1.desc or "Class starter ability #1 (Action Bar Slot 1)",
+                    isStarter = true,
+                };
             end
         end
-        if not hasSt1 and not (cb.clearedSlots and cb.clearedSlots[6]) then
-            cb.spells[6] = {
-                key = st1.key,
-                name = st1.name,
-                icon = st1.icon,
-                school = st1.school,
-                prio = 6,
-                rankMax = 8,
-                reason = st1.desc or "Class starter ability #1 (Action Bar Slot 1)",
-                isStarter = true,
-            };
-        end
 
+        -- Starter 2 in Slot 5 (ONLY if player actually has a live 2nd starter detected!)
         if st2 then
             local hasSt2 = false;
             for sIdx = 1, 6 do
@@ -233,17 +468,29 @@ local function GetCustomBuild(classKey, buildIdx)
                     break;
                 end
             end
-            if not hasSt2 and not (cb.clearedSlots and cb.clearedSlots[5]) and not cb.spells[5] then
+            if not hasSt2 and not (cb.clearedSlots and cb.clearedSlots[5]) then
                 cb.spells[5] = {
-                    key = st2.key,
+                    key = st2.key or CanonicalSpellKey(st2.name),
                     name = st2.name,
                     icon = st2.icon,
-                    school = st2.school,
+                    school = st2.school or "Physical",
                     prio = 5,
                     rankMax = 8,
                     reason = st2.desc or "Class starter ability #2 (Action Bar Slot 2)",
                     isStarter = true,
                 };
+            end
+            -- Remove st2 from slots 1..4 if duplicate
+            for s = 1, 4 do
+                local sp = cb.spells[s];
+                if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
+                    cb.spells[s] = nil;
+                end
+            end
+        else
+            -- No 2nd starter: clear slot 5 if it was marked as a starter
+            if cb.spells[5] and cb.spells[5].isStarter then
+                cb.spells[5] = nil;
             end
         end
     end
@@ -841,6 +1088,8 @@ for sIdx = 1, 6 do
         local cb = GetCustomBuild(currentClass, currentBuildIdx);
         if cb and cb.spells then
             cb.spells[this.sIdx] = nil;
+            cb.clearedSlots = cb.clearedSlots or {};
+            cb.clearedSlots[this.sIdx] = true;
             BordoUI_BuildAdvisor_Refresh();
         end
     end);
@@ -1545,6 +1794,7 @@ for r = 1, 12 do
                 rankMax = 8,
                 reason = "Custom Priority #" .. currentTargetSlot,
             };
+            if cb.clearedSlots then cb.clearedSlots[currentTargetSlot] = nil; end
             PlaySound("igSpellBookOpen");
             DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Set Spell #" .. currentTargetSlot .. " to |cff00ff00" .. d.name .. "|r");
         else
@@ -2653,6 +2903,7 @@ RefreshChoiceHUD = function()
     local prevText = ui.prevText;
     local previewGlowBtn = ui.previewGlowBtn;
     RegisterOnTopOfScreens();
+    BordoUI_DetectLiveStarters();
     local activeBuild, actClass, actIdx = BordoUI_GetActiveBuild();
     if not (activeBuild and activeBuild.spells) then
         choiceHUD:Hide();
@@ -3447,6 +3698,7 @@ function BordoUI_ToggleBuildAdvisor()
         if activeBuild and actClass and actClass == currentClass and actIdx then
             currentBuildIdx = actIdx;
         end
+        BordoUI_DetectLiveStarters();
         BordoUI_BuildAdvisor_Refresh();
         advisorFrame:Show();
     end
@@ -3587,6 +3839,7 @@ watcher:RegisterEvent("UNIT_INVENTORY_CHANGED");
 watcher:RegisterEvent("BAG_UPDATE");
 watcher:RegisterEvent("PLAYER_ENTERING_WORLD");
 watcher:SetScript("OnEvent", function()
+    BordoUI_DetectLiveStarters();
     if choiceHUD and choiceHUD:IsShown() then
         RefreshChoiceHUD();
     end
@@ -3648,6 +3901,7 @@ local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 initFrame:SetScript("OnEvent", function()
     RegisterOnTopOfScreens();
+    BordoUI_DetectLiveStarters();
     BordoUI_BanishedSpells = {};
     -- Deactivate Active in Run by default on startup
     BordoUI_ClearActiveBuild();
