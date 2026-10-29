@@ -28,6 +28,11 @@ local MAX_LINES = 10
 -- The bars start under the title and the strip of numbers (total, dps, now).
 local STRIP_TOP, STRIP_HEIGHT = 20, 14
 local BARS_TOP = STRIP_TOP + STRIP_HEIGHT + 2
+local SHARE_WIDTH = 30
+local AMOUNT_WIDTH = 44
+local AMOUNT_RIGHT = SHARE_WIDTH + 6
+local currentWidth = WIDTH
+local NAME_ROOM = currentWidth - BAR_HEIGHT - 2 - (AMOUNT_RIGHT + AMOUNT_WIDTH + 2) - 4
 
 -- One color per source, handed out in the order they first show: twelve hues
 -- spread around the wheel, each next one far from the last, so neighbours in
@@ -138,7 +143,6 @@ function BordoUI_GetMeterScale()
 	return (BordoUIDB and BordoUIDB.meterScale) or 1.0
 end
 
-local currentWidth = WIDTH
 local isMeterDragging = false
 local isMeterSizing = false
 local seatedOn
@@ -1176,10 +1180,6 @@ function SurvivorUI_MeterShare(name)
 end
 
 -- The numbers' columns, from the bar's right end: the share, then the amount.
-local SHARE_WIDTH = 30
-local AMOUNT_WIDTH = 44
-local AMOUNT_RIGHT = SHARE_WIDTH + 6
-local NAME_ROOM = currentWidth - BAR_HEIGHT - 2 - (AMOUNT_RIGHT + AMOUNT_WIDTH + 2) - 4
 
 -- The filled part never shorter than the icon's square, so the source's
 -- color goes round its icon, as in the build list, however small its share.
