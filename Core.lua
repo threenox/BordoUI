@@ -47,7 +47,7 @@ local defaults = {
     dmgScale   = 0.75,
     tableScale = 0.80,
     collapsed  = false,
-    locked     = false, -- Global UI window lock
+    locked     = true, -- Global UI window lock (Default: always LOCKED on startup)
     hudPos     = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 },
     centerHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 },
     statsPos   = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -14 },
@@ -175,6 +175,9 @@ function BordoUI:SetLocked(locked)
     if ( BordoUI.UpdateAllLockButtons ) then
         BordoUI:UpdateAllLockButtons();
     end
+    if ( BordoUI.UpdateSCTAnchorVisibility ) then
+        BordoUI:UpdateSCTAnchorVisibility();
+    end
     if ( BordoUIDB.locked ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cffff3333[LOCKED]|r. Dragging is disabled.");
     else
@@ -237,6 +240,24 @@ eventFrame:SetScript("OnEvent", function()
             BordoUI:UpdateAllLockButtons();
         end
         if ( event == "PLAYER_ENTERING_WORLD" ) then
+            BordoUIDB.locked = true;
+            BordoUI.moveModeActive = false;
+            if ( BordoUI.controlBar ) then
+                BordoUI.controlBar:Hide();
+            end
+            if ( BordoUI.MoveOverlays ) then
+                for i = 1, table.getn(BordoUI.MoveOverlays) do
+                    if ( BordoUI.MoveOverlays[i] ) then
+                        BordoUI.MoveOverlays[i]:Hide();
+                    end
+                end
+            end
+            if ( BordoUI.UpdateSCTAnchorVisibility ) then
+                BordoUI:UpdateSCTAnchorVisibility();
+            end
+            if ( BordoUI.UpdateAllLockButtons ) then
+                BordoUI:UpdateAllLockButtons();
+            end
             pcall(SetCVar, "hudFlag", "0");
             if ( AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") ) then
                 AZS_SetHudShown("flag", false);
@@ -591,6 +612,8 @@ local function CreateMoveOverlay(targetFrame, labelText, saveFunc)
     end);
     overlay:SetScript("OnDragStop", function()
         targetFrame:StopMovingOrSizing();
+        overlay:ClearAllPoints();
+        overlay:SetAllPoints(targetFrame);
         if ( saveFunc ) then saveFunc(targetFrame); end
     end);
     overlay:Hide();
@@ -727,8 +750,15 @@ function BordoUI:ToggleMoveMode(enable)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cff55ff55[ACTIVE]|r. Drag any colored box to reposition. Click |cffffd100[Lock All Windows]|r or type |cffffd100/lock|r when done.");
     else
         BordoUI.controlBar:Hide();
+        BordoUIDB.locked = true;
         if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cffff3333[OFF]|r. All window positions saved.");
+    end
+    if ( BordoUI.UpdateSCTAnchorVisibility ) then
+        BordoUI:UpdateSCTAnchorVisibility();
+    end
+    if ( BordoUI.UpdateAllLockButtons ) then
+        BordoUI:UpdateAllLockButtons();
     end
 end
 function BordoUI:ResetToDefaultLayout()
@@ -761,6 +791,19 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.meterRight = nil;
     BordoUIDB.meterBottom = nil;
     BordoUIDB.meterScale = 1.0;
+    BordoUIDB.sctOutgoingPos = nil;
+    BordoUIDB.sctIncomingPos = nil;
+    if ( BordoUI_SCT_OutgoingAnchor ) then
+        BordoUI_SCT_OutgoingAnchor:ClearAllPoints();
+        BordoUI_SCT_OutgoingAnchor:SetPoint("CENTER", UIParent, "CENTER", 145, 20);
+    end
+    if ( BordoUI_SCT_IncomingAnchor ) then
+        BordoUI_SCT_IncomingAnchor:ClearAllPoints();
+        BordoUI_SCT_IncomingAnchor:SetPoint("CENTER", UIParent, "CENTER", -145, 20);
+    end
+    if ( BordoUI.UpdateSCTAnchorVisibility ) then
+        BordoUI:UpdateSCTAnchorVisibility();
+    end
     if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = defaultHudPos;
