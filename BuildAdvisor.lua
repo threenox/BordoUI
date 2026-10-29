@@ -93,12 +93,101 @@ local function IconsMatch(iconA, iconB)
     local sA = string.lower(NormalizeIconPath(iconA));
     local sB = string.lower(NormalizeIconPath(iconB));
     if sA == sB then return true; end
-    local fileA = string.match(sA, "([^\\]+)$") or sA;
-    local fileB = string.match(sB, "([^\\]+)$") or sB;
+    local _, _, fileA = string.find(sA, "([^\\]+)$");
+    fileA = fileA or sA;
+    local _, _, fileB = string.find(sB, "([^\\]+)$");
+    fileB = fileB or sB;
     if fileA ~= "" and fileA ~= "inv_misc_questionmark" and fileA == fileB then
         return true;
     end
     return false;
+end
+
+-- Dedicated scanner tooltip for 100% reliable inventory item inspection in WoW 1.12
+local scanTooltip = CreateFrame("GameTooltip", "BordoUI_ItemScannerTooltip", nil, "GameTooltipTemplate");
+scanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
+
+local function GetActionSlotSpell(actId)
+    if not actId or actId < 1 or actId > 12 then return nil, nil; end
+    local tex = GetActionTexture and GetActionTexture(actId);
+    local name = "";
+    if scanTooltip and BordoUI_ItemScannerTooltipTextLeft1 then
+        scanTooltip:ClearLines();
+        scanTooltip:SetAction(actId);
+        local t = BordoUI_ItemScannerTooltipTextLeft1:GetText();
+        if t and t ~= "" then
+            name = t;
+        end
+    end
+    if name ~= "" or tex then
+        return name, tex;
+    end
+    return nil, nil;
+end
+
+local KEY_TO_NAME_MAP = {
+    ["pw_shield"]           = "Power Word: Shield",
+    ["power_word_shield"]   = "Power Word: Shield",
+    ["sw_pain"]             = "Shadow Word: Pain",
+    ["shadow_word_pain"]    = "Shadow Word: Pain",
+    ["demo_shout"]          = "Demoralizing Shout",
+    ["demoralizing_shout"]  = "Demoralizing Shout",
+    ["hunters_mark"]        = "Hunter's Mark",
+    ["cone_of_cold"]        = "Cone of Cold",
+    ["arcane_missiles"]     = "Arcane Missiles",
+    ["sinister_strike"]     = "Sinister Strike",
+    ["shadow_bolt"]         = "Shadow Bolt",
+    ["lightning_bolt"]      = "Lightning Bolt",
+    ["earth_shock"]         = "Earth Shock",
+    ["auto_shot"]           = "Auto Shot",
+    ["serpent_sting"]       = "Serpent Sting",
+    ["holy_nova"]           = "Holy Nova",
+    ["mind_blast"]          = "Mind Blast",
+    ["mind_flay"]           = "Mind Flay",
+    ["devouring_plague"]    = "Devouring Plague",
+    ["flamestrike"]         = "Flamestrike",
+    ["frostbolt"]           = "Frostbolt",
+    ["fireball"]            = "Fireball",
+    ["consecration"]        = "Consecration",
+    ["exorcism"]            = "Exorcism",
+    ["judgement"]           = "Judgement",
+    ["cleave"]              = "Cleave",
+    ["rend"]                = "Rend",
+};
+
+local function SpellKeyToName(key)
+    if not key or key == "" then return ""; end
+    local lower = string.lower(key);
+    if KEY_TO_NAME_MAP[lower] then return KEY_TO_NAME_MAP[lower]; end
+    local spaced = string.gsub(lower, "_", " ");
+    local res = string.gsub(spaced, "(%a)([%w']*)", function(first, rest)
+        return string.upper(first) .. rest;
+    end);
+    return res;
+end
+
+local function IsClassStarter(className, name, key, icon)
+    if not className then return false, 0, nil; end
+    local cUpper = string.upper(className);
+    local starter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
+    if not starter then return false, 0, nil; end
+    local st1 = starter[1] or starter;
+    local st2 = starter[2];
+
+    local cName = name and CanonicalSpellKey(name) or "";
+    local cKey = key and CanonicalSpellKey(key) or "";
+
+    if st1 then
+        if (name and st1.name == name) or (cName ~= "" and CanonicalSpellKey(st1.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st1.key) == cKey) or (icon and st1.icon and IconsMatch(st1.icon, icon)) then
+            return true, 1, st1;
+        end
+    end
+    if st2 then
+        if (name and st2.name == name) or (cName ~= "" and CanonicalSpellKey(st2.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st2.key) == cKey) or (icon and st2.icon and IconsMatch(st2.icon, icon)) then
+            return true, 2, st2;
+        end
+    end
+    return false, 0, nil;
 end
 
 local function GetCustomBuild(classKey, buildIdx)
@@ -107,6 +196,57 @@ local function GetCustomBuild(classKey, buildIdx)
     if idx < 1 or idx > 3 then idx = 1; end
     local builds = BordoUI_GetClassBuilds(cUpper);
     local cb = builds and builds[idx];
+    local starter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
+    if cb and cb.spells and starter then
+        local st1 = starter[1] or starter;
+        local st2 = starter[2];
+
+        local hasSt1 = false;
+        for sIdx = 1, 6 do
+            local sp = cb.spells[sIdx];
+            if sp and (sp.name == st1.name or (sp.key and sp.key == st1.key)) then
+                hasSt1 = true;
+                sp.isStarter = true;
+                break;
+            end
+        end
+        if not hasSt1 and not (cb.clearedSlots and cb.clearedSlots[6]) then
+            cb.spells[6] = {
+                key = st1.key,
+                name = st1.name,
+                icon = st1.icon,
+                school = st1.school,
+                prio = 6,
+                rankMax = 8,
+                reason = st1.desc or "Class starter ability #1 (Action Bar Slot 1)",
+                isStarter = true,
+            };
+        end
+
+        if st2 then
+            local hasSt2 = false;
+            for sIdx = 1, 6 do
+                local sp = cb.spells[sIdx];
+                if sp and (sp.name == st2.name or (sp.key and sp.key == st2.key)) then
+                    hasSt2 = true;
+                    sp.isStarter = true;
+                    break;
+                end
+            end
+            if not hasSt2 and not (cb.clearedSlots and cb.clearedSlots[5]) and not cb.spells[5] then
+                cb.spells[5] = {
+                    key = st2.key,
+                    name = st2.name,
+                    icon = st2.icon,
+                    school = st2.school,
+                    prio = 5,
+                    rankMax = 8,
+                    reason = st2.desc or "Class starter ability #2 (Action Bar Slot 2)",
+                    isStarter = true,
+                };
+            end
+        end
+    end
     if cb and cb.jewelry then
         for k, v in pairs(cb.jewelry) do
             if v then
@@ -121,14 +261,9 @@ local function GetCustomBuild(classKey, buildIdx)
                             v.spell = string.gsub(sp, "%s+[IVXLCDMivxlcdm%d]+$", "");
                         end
                     end
-                    local nName = v.name or "";
-                    local nSpell = v.spell or "";
-                    if nName == "Amulet of the Inferno: Exorcism" or nSpell == "Exorcism" or string.find(nName, "Exorcism") then
-                        v.name = "Eye of the Splitting Sky: Exorcism";
-                        v.icon = "Interface\\Icons\\INV_Jewelry_Necklace_16";
-                        v.benefit = "+1 Tgt, +24% Dmg, Leap";
-                        v.desc = "Legendary amulet - remakes Exorcism\nEquip: Exorcism strikes 1 more target.\nEquip: Increases the damage of Exorcism by 24%.\nEquip: Exorcism's hits leap to 2 more enemies for 36%.";
-                        v.spell = "Exorcism";
+                    if v.spell and v.spell ~= "" then
+                        v.name = "Eye of the Splitting Sky: " .. v.spell;
+                        v.icon = "Interface\\Icons\\INV_Jewelry_Necklace_20";
                         v.quality = 5;
                     end
                 elseif k == "ring1" or k == "ring2" then
@@ -825,9 +960,7 @@ jtStatus:SetPoint("TOPLEFT", jtDesc, "BOTTOMLEFT", 0, -6);
 jtStatus:SetPoint("RIGHT", jTooltip, "RIGHT", -8, 0);
 jtStatus:SetJustifyH("LEFT");
 
--- Dedicated scanner tooltip for 100% reliable inventory item inspection in WoW 1.12
-local scanTooltip = CreateFrame("GameTooltip", "BordoUI_ItemScannerTooltip", nil, "GameTooltipTemplate");
-scanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
+-- (Dedicated scanner tooltip scanTooltip is defined at top of file)
 
 local function NormalizeItemString(str)
     if not str then return ""; end
@@ -867,12 +1000,14 @@ local function IsJewelryEquipped(targetItem)
     end
 
     local cleanTargetName = NormalizeItemString(targetName);
-    local cleanTargetSpell = string.lower(string.gsub(targetSpell or "", "[^%a]", ""));
+    local cleanTargetSpell = NormalizeItemString(targetSpell);
+    local lowerTargetSpell = string.lower(targetSpell or "");
     local cleanTargetIcon = string.lower(string.gsub(targetIcon or "", "[\\/]", ""));
 
     -- Aliases for legacy saved custom builds (e.g. "Amulet of the Inferno: Exorcism" -> target spell "exorcism")
     if string.find(cleanTargetName, "amuletoftheinfernoexorcism") or string.find(cleanTargetName, "infernoexorcism") then
         cleanTargetSpell = "exorcism";
+        lowerTargetSpell = "exorcism";
     end
 
     -- Inventory slots: 2 = Neck, 11 = Ring 1, 12 = Ring 2, 13 = Trinket 1, 14 = Trinket 2
@@ -902,28 +1037,65 @@ local function IsJewelryEquipped(targetItem)
             local cleanEquipName = NormalizeItemString(rawName);
             local lowerEquipName = string.lower(rawName);
 
-            -- 1. Exact or substring match of base name (e.g. "Eye of the Splitting Sky: Exorcism II" matches "Eye of the Splitting Sky: Exorcism")
+            -- Extract spell from equipped item if it has a colon (e.g. "Eye of the Splitting Sky: Mind Blast II")
+            local eqSpell = nil;
+            if string.find(rawName, ":") then
+                local _, _, sp = string.find(rawName, ":%s*([^:]+)");
+                if sp then
+                    sp = string.gsub(sp, "%s+[IVXLCDMivxlcdm%d]+$", "");
+                    eqSpell = sp;
+                end
+            end
+            local cleanEqSpell = eqSpell and NormalizeItemString(eqSpell) or "";
+
+            -- 1. Exact or substring match of base name (e.g. "Blackhand's Breadth II" matches "Blackhand's Breadth")
             if cleanTargetName ~= "" and (cleanEquipName == cleanTargetName or string.find(cleanEquipName, cleanTargetName, 1, true) or string.find(cleanTargetName, cleanEquipName, 1, true)) then
                 return true, rawName;
             end
 
             -- 2. Spell-based remake matching for Neck slot (Slot 2) or target amulets
-            -- In Azeroth Survivors, legendary amulets remake class abilities.
-            -- If the target is an amulet for a spell (e.g. Exorcism), and slot 2 (or any equipped jewelry)
-            -- modifies that spell, it satisfies the build advisor!
+            -- In Azeroth Survivors, legendary amulets remake class abilities: "Eye of the Splitting Sky: <Spell>"
             if cleanTargetSpell ~= "" and (sId == 2 or isNeckTarget) then
-                if string.find(lowerEquipName, cleanTargetSpell, 1, true) then
+                -- Match extracted spell after colon (e.g. "mindblast" == "mindblast")
+                if cleanEqSpell ~= "" and cleanEqSpell == cleanTargetSpell then
                     return true, rawName;
+                end
+                -- Match target spell contained inside clean equipped item name (e.g. "eyeofthesplittingskymindblast" contains "mindblast")
+                if string.find(cleanEquipName, cleanTargetSpell, 1, true) then
+                    return true, rawName;
+                end
+                -- Match case-insensitive full spell name with space
+                if lowerTargetSpell ~= "" and string.find(lowerEquipName, lowerTargetSpell, 1, true) then
+                    return true, rawName;
+                end
+            end
+
+            -- 3. Tooltip scanner check for Neck slot (Slot 2): does the equipped amulet mention target spell in effects?
+            if sId == 2 and cleanTargetSpell ~= "" then
+                scanTooltip:ClearLines();
+                scanTooltip:SetInventoryItem("player", 2);
+                local numLines = (scanTooltip.NumLines and scanTooltip:NumLines()) or 0;
+                for l = 1, math.min(15, numLines) do
+                    local lineObj = getglobal("BordoUI_ItemScannerTooltipTextLeft" .. l);
+                    local lineText = lineObj and lineObj:GetText();
+                    if lineText and lineText ~= "" then
+                        local cleanLine = NormalizeItemString(lineText);
+                        if cleanLine ~= "" and string.find(cleanLine, cleanTargetSpell, 1, true) then
+                            return true, rawName;
+                        end
+                    end
                 end
             end
         end
 
-        -- 3. Icon / texture fallback matching
-        local tex = GetInventoryItemTexture and GetInventoryItemTexture("player", sId);
-        if tex and cleanTargetIcon ~= "" and string.len(cleanTargetIcon) > 5 then
-            local cleanTex = string.lower(string.gsub(tex, "[\\/]", ""));
-            if cleanTex ~= "" and (cleanTex == cleanTargetIcon or string.find(cleanTex, cleanTargetIcon, 1, true) or string.find(cleanTargetIcon, cleanTex, 1, true)) then
-                return true, rawName;
+        -- 4. Icon / texture fallback matching (only for rings/trinkets)
+        if sId ~= 2 then
+            local tex = GetInventoryItemTexture and GetInventoryItemTexture("player", sId);
+            if tex and cleanTargetIcon ~= "" and string.len(cleanTargetIcon) > 5 then
+                local cleanTex = string.lower(string.gsub(tex, "[\\/]", ""));
+                if cleanTex ~= "" and (cleanTex == cleanTargetIcon or string.find(cleanTex, cleanTargetIcon, 1, true) or string.find(cleanTargetIcon, cleanTex, 1, true)) then
+                    return true, rawName;
+                end
             end
         end
     end
@@ -2183,13 +2355,13 @@ hudClose:SetScript("OnClick", function()
     DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Choice HUD hidden. Type |cff00ccff/guide hud on|r to show it again.");
 end);
 
--- 6 Modern Sleek Horizontal Spell Slot Cards (Row 1)
+-- 5 Modern Sleek Horizontal Spell Slot Cards (Row 1: 5 Pick / Draft Slots)
 local hudSlots = {}; AUI.hudSlots = hudSlots;
-for i = 1, 6 do
+for i = 1, 5 do
     local slot = CreateFrame("Button", nil, choiceHUD);
-    slot:SetWidth(84);
+    slot:SetWidth(102);
     slot:SetHeight(44);
-    slot:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 8 + (i - 1) * 88, -24);
+    slot:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 7 + (i - 1) * 106, -24);
     slot:SetBackdrop({
         bgFile = FLAT, edgeFile = FLAT, edgeSize = 1,
         insets = { left = 1, right = 1, top = 1, bottom = 1 },
@@ -2223,8 +2395,8 @@ for i = 1, 6 do
     sTitle:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
     sTitle:SetShadowColor(0, 0, 0, 1);
     sTitle:SetShadowOffset(1, -1);
-    sTitle:SetPoint("TOPLEFT", icon, "TOPRIGHT", 4, 2);
-    sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -2, 2);
+    sTitle:SetPoint("TOPLEFT", icon, "TOPRIGHT", 5, 2);
+    sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
     sTitle:SetJustifyH("LEFT");
     sTitle:SetTextColor(1, 1, 1);
 
@@ -2232,7 +2404,7 @@ for i = 1, 6 do
     status:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE");
     status:SetShadowColor(0, 0, 0, 1);
     status:SetShadowOffset(1, -1);
-    status:SetPoint("BOTTOMLEFT", icon, "BOTTOMRIGHT", 4, -2);
+    status:SetPoint("BOTTOMLEFT", icon, "BOTTOMRIGHT", 5, -2);
     status:SetTextColor(0.0, 1.0, 0.4);
 
     slot.icon = icon;
@@ -2390,20 +2562,35 @@ local function GetLearnedRank(sp)
                     if eCanon ~= "" and (eCanon == canonKey or eCanon == canonName) then
                         return eRank;
                     end
+                    local skName = SpellKeyToName(rawKey);
+                    if skName ~= "" then
+                        local skCanon = CanonicalSpellKey(skName);
+                        if skCanon ~= "" and (skCanon == canonKey or skCanon == canonName) then
+                            return eRank;
+                        end
+                    end
                 end
 
-                -- Check e.spell or e[2] (string spell name)
+                -- Check e.spell or e[2] (string spell name or numeric spell ID)
                 local rawSpell = e.spell or e[2];
                 if rawSpell and type(rawSpell) == "string" and rawSpell ~= "" then
                     local eCanonSpell = CanonicalSpellKey(rawSpell);
                     if eCanonSpell ~= "" and (eCanonSpell == canonKey or eCanonSpell == canonName) then
                         return eRank;
                     end
+                elseif rawSpell and type(rawSpell) == "number" and GetSpellInfo then
+                    local sName = GetSpellInfo(rawSpell);
+                    if sName and sName ~= "" then
+                        local eCanonSpell = CanonicalSpellKey(sName);
+                        if eCanonSpell ~= "" and (eCanonSpell == canonKey or eCanonSpell == canonName) then
+                            return eRank;
+                        end
+                    end
                 end
 
                 -- Check icon texture match (e.icon or e[2])
                 local eIcon = e.icon or e[2];
-                if eIcon and spIcon ~= "" and IconsMatch(eIcon, spIcon) then
+                if eIcon and type(eIcon) == "string" and spIcon ~= "" and IconsMatch(eIcon, spIcon) then
                     return eRank;
                 end
             end
@@ -2413,19 +2600,14 @@ local function GetLearnedRank(sp)
     -- Tier 2: Check Action Bar Buttons 1 to 6 (regular draft abilities)
     if GetActionTexture then
         for actId = 1, 6 do
-            local tex = GetActionTexture(actId);
-            if tex and spIcon ~= "" and IconsMatch(tex, spIcon) then
+            local aName, aTex = GetActionSlotSpell(actId);
+            if aTex and spIcon ~= "" and IconsMatch(aTex, spIcon) then
                 return 1;
             end
-            if scanTooltip and BordoUI_ItemScannerTooltipTextLeft1 then
-                scanTooltip:ClearLines();
-                scanTooltip:SetAction(actId);
-                local actName = BordoUI_ItemScannerTooltipTextLeft1:GetText();
-                if actName and actName ~= "" then
-                    local actCanon = CanonicalSpellKey(actName);
-                    if actCanon ~= "" and (actCanon == canonKey or actCanon == canonName) then
-                        return 1;
-                    end
+            if aName and aName ~= "" then
+                local actCanon = CanonicalSpellKey(aName);
+                if actCanon ~= "" and (actCanon == canonKey or actCanon == canonName) then
+                    return 1;
                 end
             end
         end
@@ -2493,9 +2675,9 @@ RefreshChoiceHUD = function()
 
     if hudMode == "ALL" then
         choiceHUD:SetHeight(124);
-        for i = 1, 6 do
+        for i = 1, 5 do
             hudSlots[i]:ClearAllPoints();
-            hudSlots[i]:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 8 + (i - 1) * 88, -24);
+            hudSlots[i]:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 7 + (i - 1) * 106, -24);
             hudSlots[i]:Show();
         end
         for j = 1, 5 do
@@ -2505,9 +2687,9 @@ RefreshChoiceHUD = function()
         end
     elseif hudMode == "SPELLS" then
         choiceHUD:SetHeight(72);
-        for i = 1, 6 do
+        for i = 1, 5 do
             hudSlots[i]:ClearAllPoints();
-            hudSlots[i]:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 8 + (i - 1) * 88, -24);
+            hudSlots[i]:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 7 + (i - 1) * 106, -24);
             hudSlots[i]:Show();
         end
         for j = 1, 5 do
@@ -2515,7 +2697,7 @@ RefreshChoiceHUD = function()
         end
     elseif hudMode == "JEWELRY" then
         choiceHUD:SetHeight(72);
-        for i = 1, 6 do
+        for i = 1, 5 do
             hudSlots[i]:Hide();
         end
         for j = 1, 5 do
@@ -2524,44 +2706,160 @@ RefreshChoiceHUD = function()
             hudJewelrySlots[j]:Show();
         end
     end
+    if hudSlots[6] then hudSlots[6]:Hide(); end
+
+    local starter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[actClass];
 
     -- Detect total learned regular spells in current run from Azeroth Survivors engine
     -- The last entry in AZS_SPELLS is the racial ability on button 12.
     -- Regular card picks occupy buttons 1 to 6.
     local totalSpells = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0;
-    local numLearned = math.max(0, totalSpells - 1);
-    local isSlotsFull = (numLearned >= 6);
+    local numLearnedOnBar = math.max(0, totalSpells - 1);
+    if numLearnedOnBar == 0 and GetActionTexture then
+        for a = 1, 6 do
+            if GetActionTexture(a) then
+                numLearnedOnBar = numLearnedOnBar + 1;
+            end
+        end
+    end
+    local freeBarSlots = math.max(0, 6 - numLearnedOnBar);
+    local isSlotsFull = (freeBarSlots <= 0 or numLearnedOnBar >= 6);
 
     BordoUI_BanishedSpells = BordoUI_BanishedSpells or {};
 
-    -- Update Row 1: 6 Spells
+    -- Detect any active talent spells on character action bar that are NOT in the build
+    local talentSpells = {};
+    if AZS_SPELLS and table.getn(AZS_SPELLS) > 1 then
+        local numRegular = table.getn(AZS_SPELLS) - 1;
+        for idx = 1, numRegular do
+            local e = AZS_SPELLS[idx];
+            local eKey = e and (e.key or e[1]) or "";
+            local eSpell = e and (e.spell or e[2]);
+            local eName = "";
+            local eIcon = e and (e.icon or e[2]);
+
+            if type(eSpell) == "string" and eSpell ~= "" then
+                eName = eSpell;
+            elseif type(eSpell) == "number" and GetSpellInfo then
+                local sName, _, sIcon = GetSpellInfo(eSpell);
+                if sName and sName ~= "" then
+                    eName = sName;
+                    if not eIcon or type(eIcon) ~= "string" or eIcon == "" then eIcon = sIcon; end
+                end
+            end
+            if eName == "" and eKey ~= "" then
+                eName = SpellKeyToName(eKey);
+            end
+
+            -- Also check action bar button
+            if (eName == "" or not eIcon or type(eIcon) ~= "string") and idx <= 6 then
+                local aName, aTex = GetActionSlotSpell(idx);
+                if aName and aName ~= "" then eName = aName; end
+                if aTex and aTex ~= "" then eIcon = aTex; end
+            end
+
+            if eName ~= "" then
+                local inBuild = false;
+                for s = 1, 6 do
+                    local bsp = activeBuild.spells and activeBuild.spells[s];
+                    if bsp and (bsp.name == eName or (bsp.key and CanonicalSpellKey(bsp.key) == CanonicalSpellKey(eName)) or (bsp.icon and eIcon and IconsMatch(bsp.icon, eIcon))) then
+                        inBuild = true;
+                        break;
+                    end
+                end
+                local isStarter = IsClassStarter(actClass, eName, eKey, eIcon);
+                if not inBuild and not isStarter then
+                    table.insert(talentSpells, {
+                        name = eName,
+                        icon = (type(eIcon) == "string" and eIcon) or "Interface\\Icons\\INV_Misc_QuestionMark",
+                        rank = tonumber(e.rank or e[3]) or 1,
+                        isTalent = true,
+                    });
+                end
+            end
+        end
+    end
+
+    -- Compile the 5 display spells for the Choice HUD:
+    -- Filter out class starter spells sitting at Slot #5 or #6 (since player already starts with them on bar)
+    local buildDraftSpells = {};
+    local startersInBuild = {};
+    for s = 1, 6 do
+        local bsp = activeBuild.spells and activeBuild.spells[s];
+        if bsp and bsp.name then
+            local isStarter = bsp.isStarter or IsClassStarter(actClass, bsp.name, bsp.key, bsp.icon);
+            if isStarter and s >= 5 then
+                table.insert(startersInBuild, bsp);
+            else
+                table.insert(buildDraftSpells, bsp);
+            end
+        end
+    end
+    for sIdx = 1, table.getn(startersInBuild) do
+        if table.getn(buildDraftSpells) < 5 then
+            table.insert(buildDraftSpells, startersInBuild[sIdx]);
+        end
+    end
+
+    local numTalents = table.getn(talentSpells);
+    local maxDraftSlots = math.max(0, 5 - numTalents);
+    local displaySpells = {};
+    for idx = 1, maxDraftSlots do
+        if buildDraftSpells[idx] then
+            table.insert(displaySpells, buildDraftSpells[idx]);
+        end
+    end
+    for tIdx = 1, numTalents do
+        if table.getn(displaySpells) < 5 then
+            table.insert(displaySpells, talentSpells[tIdx]);
+        end
+    end
+
+    local numLearnedPicks = 0;
+
+    -- Update Row 1: 5 Spells
     -- Slot #1: Priority slot: if unlearned -> "[PICK #1]", once learned -> steady "PRIO" (antique gold, no blink).
-    -- Slots #2 to #6: If unlearned and free slots exist -> "[PICK]" in green! Once learned -> ONLY spell name centered vertically.
-    -- No MAX anywhere; no slots dimmed or greyed out.
-    for i = 1, 6 do
+    -- Slots #2 to #5: If unlearned and free slots exist -> "[PICK]" in green! Once learned -> ONLY spell name centered vertically.
+    for i = 1, 5 do
         local slot = hudSlots[i];
-        local sp = activeBuild.spells[i];
+        local sp = displaySpells[i];
         if sp and sp.name then
             slot.spellData = sp;
             slot.icon:SetTexture(sp.icon or "Interface\\Icons\\INV_Misc_QuestionMark");
             slot.icon:SetVertexColor(1, 1, 1);
-            slot.badge:SetText("#" .. (sp.prio or i));
             slot.glow:Hide();
 
             local displayName = sp.name;
-            if string.len(displayName) > 11 then
-                displayName = string.sub(displayName, 1, 10) .. ".";
+            if string.len(displayName) > 13 then
+                displayName = string.sub(displayName, 1, 12) .. ".";
             end
             slot.sTitle:SetText(displayName);
 
             local spKey = sp.key or string.lower(string.gsub(sp.name, "[%s%p_]", ""));
             local isBanished = BordoUI_BanishedSpells[spKey];
-            local curRank = GetLearnedRank(sp);
+            local curRank = sp.isTalent and (sp.rank or 1) or GetLearnedRank(sp);
 
-            if isBanished then
+            if curRank > 0 then
+                numLearnedPicks = numLearnedPicks + 1;
+            end
+
+            if sp.isTalent then
+                slot.badge:SetText("[T]");
+                slot.badge:SetTextColor(0.5, 0.8, 1.0);
                 slot.sTitle:ClearAllPoints();
-                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 4, 2);
-                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -2, 2);
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
+                slot.status:SetText("|cff60a5fa[Talent]|r");
+                slot.status:Show();
+                slot:SetAlpha(0.85);
+                slot:SetBackdropColor(0.02, 0.04, 0.08, 0.35);
+                slot:SetBackdropBorderColor(0.20, 0.35, 0.60, 0.70);
+            elseif isBanished then
+                slot.badge:SetText("#" .. (sp.prio or i));
+                slot.badge:SetTextColor(1, 0.85, 0.2);
+                slot.sTitle:ClearAllPoints();
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
                 slot.status:SetText("|cffff4444[BANISHED]|r");
                 slot.status:Show();
                 slot:SetAlpha(0.35);
@@ -2570,9 +2868,11 @@ RefreshChoiceHUD = function()
                 slot:SetBackdropBorderColor(0.40, 0.15, 0.15, 0.50);
             elseif i == 1 then
                 -- Slot 1: ALWAYS Priority Slot
+                slot.badge:SetText("#" .. (sp.prio or 1));
+                slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
-                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 4, 2);
-                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -2, 2);
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
                 slot:SetAlpha(1.0);
                 if not isSlotsFull and curRank == 0 then
                     slot.status:SetText("|cff4ade80[PICK #1]|r");
@@ -2586,20 +2886,24 @@ RefreshChoiceHUD = function()
                     slot:SetBackdropBorderColor(0.70, 0.58, 0.28, 0.90);
                 end
             elseif not isSlotsFull and curRank == 0 then
-                -- Slots 2 to 6: NOT YET LEARNED and free slot exists -> SHOW [PICK] in soft green!
+                -- Slots 2 to 5: NOT YET LEARNED and free slot exists -> SHOW [PICK] in soft green!
+                slot.badge:SetText("#" .. (sp.prio or i));
+                slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
-                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 4, 2);
-                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -2, 2);
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
                 slot.status:SetText("|cff34d399[PICK]|r");
                 slot.status:Show();
                 slot:SetAlpha(1.0);
                 slot:SetBackdropColor(0.02, 0.05, 0.03, 0.28);
                 slot:SetBackdropBorderColor(0.18, 0.48, 0.26, 0.65);
             else
-                -- Slots 2 to 6: LEARNED (or slots full): ONLY spell name, centered vertically, no Rank/MAX
+                -- Slots 2 to 5: LEARNED (or slots full): ONLY spell name, centered vertically, no Rank/MAX
+                slot.badge:SetText("#" .. (sp.prio or i));
+                slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
-                slot.sTitle:SetPoint("LEFT", slot.icon, "RIGHT", 4, 0);
-                slot.sTitle:SetPoint("RIGHT", slot, "RIGHT", -2, 0);
+                slot.sTitle:SetPoint("LEFT", slot.icon, "RIGHT", 5, 0);
+                slot.sTitle:SetPoint("RIGHT", slot, "RIGHT", -3, 0);
                 slot.status:SetText("");
                 slot.status:Hide();
                 slot:SetAlpha(1.0);
@@ -2636,12 +2940,10 @@ RefreshChoiceHUD = function()
                         itmObj.spell = string.gsub(sp, "%s+[IVXLCDMivxlcdm%d]+$", "");
                     end
                 end
-                if itmObj.name == "Amulet of the Inferno: Exorcism" or itmObj.spell == "Exorcism" or string.find(itmObj.name or "", "Exorcism") then
-                    itmObj.name = "Eye of the Splitting Sky: Exorcism";
-                    itmObj.icon = "Interface\\Icons\\INV_Jewelry_Necklace_16";
-                    itmObj.benefit = "+1 Tgt, +24% Dmg, Leap";
-                    itmObj.desc = "Legendary amulet - remakes Exorcism\nEquip: Exorcism strikes 1 more target.\nEquip: Increases the damage of Exorcism by 24%.\nEquip: Exorcism's hits leap to 2 more enemies for 36%.";
-                    itmObj.spell = "Exorcism";
+                -- Standardize legendary remaking amulets to Eye of the Splitting Sky
+                if itmObj.spell and itmObj.spell ~= "" then
+                    itmObj.name = "Eye of the Splitting Sky: " .. itmObj.spell;
+                    itmObj.icon = "Interface\\Icons\\INV_Jewelry_Necklace_20";
                     itmObj.quality = 5;
                 end
             elseif jDef.key == "ring1" or jDef.key == "ring2" then
@@ -2654,8 +2956,13 @@ RefreshChoiceHUD = function()
 
             local qColor = ITEM_QUALITY_COLORS[itmObj.quality or 4] or { r = 1, g = 1, b = 1 };
             local displayName = itmObj.name or "Jewelry";
-            if string.len(displayName) > 12 then
-                displayName = string.sub(displayName, 1, 11) .. ".";
+            if jDef.key == "neck" and itmObj.spell and itmObj.spell ~= "" then
+                -- Display clean spell name on Neck (e.g. "Mind Blast", "Exorcism") instead of truncating prefix
+                displayName = itmObj.spell;
+            else
+                if string.len(displayName) > 13 then
+                    displayName = string.sub(displayName, 1, 12) .. ".";
+                end
             end
             jSlot.jTitle:SetText(displayName);
             jSlot.jTitle:SetTextColor(qColor.r, qColor.g, qColor.b);
@@ -2695,10 +3002,10 @@ RefreshChoiceHUD = function()
         end
     end
 
-    if isSlotsFull then
-        hudSub:SetText("|cffffd2006/6 Spells|r - |cffffffff" .. numEquippedJewelry .. "/5 BiS Gear|r");
+    if isSlotsFull or numLearnedPicks >= 5 then
+        hudSub:SetText("|cffffd2005/5 Spells|r - |cffffffff" .. numEquippedJewelry .. "/5 BiS Gear|r");
     else
-        hudSub:SetText("|cffffd200Pick Advisor|r |cffffffff(" .. numLearned .. "/6 Spells - " .. numEquippedJewelry .. "/5 BiS)|r");
+        hudSub:SetText("|cffffd200Pick Advisor|r |cffffffff(" .. numLearnedPicks .. "/5 Spells - " .. numEquippedJewelry .. "/5 BiS)|r");
     end
 end
 
@@ -2869,15 +3176,23 @@ function BordoUI_BuildAdvisor_Refresh()
 
         if sp then
             if r.selectBtn then r.selectBtn:Show(); end
-            if r.upBtn then r.upBtn:Show(); end
-            if r.downBtn then r.downBtn:Show(); end
+            if r.upBtn then
+                if sIdx == 1 then r.upBtn:Hide(); else r.upBtn:Show(); end
+            end
+            if r.downBtn then
+                if sIdx == 6 then r.downBtn:Hide(); else r.downBtn:Show(); end
+            end
             if r.clearBtn then r.clearBtn:Show(); end
 
             r.icon:SetTexture(sp.icon or "Interface\\Icons\\INV_Misc_QuestionMark");
             local sColor = SCHOOL_COLORS[sp.school] or { 1, 1, 1 };
-            r.sName:SetText(sp.name .. " |cff888888(" .. (sp.school or "Physical") .. ")|r");
+            local isStarter, stIdx, stObj = IsClassStarter(currentClass, sp.name, sp.key, sp.icon);
+            if sp.isStarter then isStarter = true; end
+            local starterTag = isStarter and " |cff00ccff[Starter]|r" or "";
+            r.sName:SetText(sp.name .. starterTag .. " |cff888888(" .. (sp.school or "Physical") .. ")|r");
             r.sName:SetTextColor(sColor[1], sColor[2], sColor[3]);
-            r.reason:SetText(sp.reason or ("Custom Priority #" .. sIdx));
+            local stDesc = (stIdx == 2 and "Class starter ability #2 (Action Bar Slot 2)") or (stIdx == 1 and "Class starter ability #1 (Action Bar Slot 1)") or "Class starter ability";
+            r.reason:SetText(sp.reason or (isStarter and stDesc or ("Custom Priority #" .. sIdx)));
 
             if isActive then
                 r.badge:SetText("|cff00ff00#" .. sIdx .. "|r");
@@ -3172,7 +3487,7 @@ watcher:SetScript("OnUpdate", function()
 
     -- Animate glow on Choice HUD if shown
     if choiceHUD and choiceHUD:IsShown() then
-        for i = 1, 6 do
+        for i = 1, 5 do
             local slot = hudSlots[i];
             if slot and slot.glow and slot.glow:IsShown() then
                 slot.glow:SetAlpha(pulseAlpha);
