@@ -366,6 +366,21 @@ local function StyleButton(button)
 		counter:SetFrameStrata(button:GetFrameStrata())
 		counter:SetFrameLevel(button:GetFrameLevel() + 2)
 	end
+
+	-- Permanently lock action buttons against dragging/unslotting in Azeroth Survivors
+	button:RegisterForDrag()
+	button:SetScript("OnDragStart", function() end)
+	button:SetScript("OnReceiveDrag", function() end)
+	button:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	button:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
+		end
+	end)
 end
 
 -- Synchronize skill icons, textures and cooldown timers (from Blizzard or AZS_SPELLS)
@@ -676,6 +691,26 @@ local function LayoutBar()
 	if PositionMicroButtons then PositionMicroButtons() end
 	UpdateSkills()
 end
+
+-- Permanently lock action bar spells against accidental mouse drag / Shift-click unslotting
+ActionButton_OnDragStart = function()
+	return
+end
+
+local orig_PickupAction = PickupAction
+PickupAction = function(slot)
+	if slot and slot >= 1 and slot <= 120 then
+		return
+	end
+	if orig_PickupAction then
+		return orig_PickupAction(slot)
+	end
+end
+
+if SetCVar then
+	SetCVar("lockActionBars", "1")
+end
+LOCK_ACTIONBAR = "1"
 -- =========================================================================
 -- 2. UNIT FRAMES (Player & Target)
 -- =========================================================================

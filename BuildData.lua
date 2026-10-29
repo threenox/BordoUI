@@ -2689,22 +2689,171 @@ for classKey, buildList in pairs(BordoUI_BuildData.Builds) do
 end
 BordoUI_BuildData.SpellLookup = spellLookup;
 
--- Multi-Starter Live Helper: Retrieve current live detected starters for a class
+-- Universal Racial Abilities Blacklist (WoW 1.12.1 / Turtle WoW - English & German)
+-- Racials MUST NEVER be detected or slotted as class starter abilities or build priorities!
+local RACIAL_SPELLS = {
+    ["BLOOD FURY"] = true,
+    ["BERSERKING"] = true,
+    ["WILL OF THE FORSAKEN"] = true,
+    ["CANNIBALIZE"] = true,
+    ["WAR STOMP"] = true,
+    ["PERCEPTION"] = true,
+    ["THE HUMAN SPIRIT"] = true,
+    ["DIPLOMACY"] = true,
+    ["STONEFORM"] = true,
+    ["FIND TREASURE"] = true,
+    ["GUN SPECIALIZATION"] = true,
+    ["ESCAPE ARTIST"] = true,
+    ["EXPANSIVE MIND"] = true,
+    ["ENGINEERING SPECIALIZATION"] = true,
+    ["SHADOWMELD"] = true,
+    ["QUICKNESS"] = true,
+    ["WISP SPIRIT"] = true,
+    ["MEDITATION"] = true,
+    ["ARCANE RESISTANCE"] = true,
+    ["BEST BARGAIN"] = true,
+    ["BETTER LIVING THROUGH CHEMISTRY"] = true,
+    -- German localization
+    ["BLUTRAUSCH"] = true,
+    ["KRIEGSSTAMPFEN"] = true,
+    ["SCHATTENMIME"] = true,
+    ["ENTFESSELUNGSKÃœNSTLER"] = true,
+    ["ENTFESSELUNGSKUNSTLER"] = true,
+    ["WACHSAMKEIT"] = true,
+    ["STEINGESTALT"] = true,
+    ["KANNIBALISMUS"] = true,
+    ["WILLE DER VERLASSENEN"] = true,
+    ["MENSCHLICHER GEIST"] = true,
+    ["DIPLOMATIE"] = true,
+    ["SCHATZSUCHE"] = true,
+    ["WACHER GEIST"] = true,
+    ["SCHNELLIGKEIT"] = true,
+    ["IRRWISCH-GEIST"] = true,
+    ["IRRWISCHGEIST"] = true,
+    ["ARKANWIDERSTAND"] = true,
+};
+
+function BordoUI_IsRacialSpell(name, key)
+    if not name and not key then return false; end
+    if name and RACIAL_SPELLS[string.upper(name)] then return true; end
+    if key and RACIAL_SPELLS[string.upper(key)] then return true; end
+    local cName = name and CanonicalSpellKey(name) or "";
+    local cKey = key and CanonicalSpellKey(key) or "";
+    if cName == "bloodfury" or cName == "escapeartist" or cName == "berserking"
+       or cName == "willoftheforsaken" or cName == "warstomp" or cName == "stoneform"
+       or cName == "shadowmeld" or cName == "cannibalize" or cName == "perception"
+       or cName == "thehumanspirit" or cName == "diplomacy" or cName == "findtreasure"
+       or cName == "gunspecialization" or cName == "expansivemind" or cName == "engineeringspecialization"
+       or cName == "quickness" or cName == "wispspirit" or cName == "meditation"
+       or cName == "arcaneresistance" or cName == "bestbargain" or cName == "betterlivingthroughchemistry"
+       or cName == "blutrausch" or cName == "kriegsstampfen" or cName == "schattenmime"
+       or cName == "entfesselungskunstler" or cName == "wachsamkeit" or cName == "steingestalt"
+       or cName == "kannibalismus" or cName == "willederverlassenen" or cName == "menschlichergeist"
+       or cName == "diplomatie" or cName == "schatzsuche" or cName == "wachergeist"
+       or cName == "schnelligkeit" or cName == "irrwischgeist" or cName == "arkanwiderstand" then
+        return true;
+    end
+    if cKey ~= "" then
+        if cKey == "bloodfury" or cKey == "escapeartist" or cKey == "berserking"
+           or cKey == "willoftheforsaken" or cKey == "warstomp" or cKey == "stoneform"
+           or cKey == "shadowmeld" or cKey == "cannibalize" or cKey == "perception"
+           or cKey == "thehumanspirit" or cKey == "diplomacy" or cKey == "findtreasure"
+           or cKey == "gunspecialization" or cKey == "expansivemind" or cKey == "engineeringspecialization"
+           or cKey == "quickness" or cKey == "wispspirit" or cKey == "meditation"
+           or cKey == "arcaneresistance" or cKey == "bestbargain" or cKey == "betterlivingthroughchemistry" then
+            return true;
+        end
+    end
+    return false;
+end
+
+-- Check whether a spell strictly belongs to the specified class (prevents cross-class leakage)
+function BordoUI_IsClassSpell(classKey, name, key, icon)
+    if not classKey then return false; end
+    local upper = string.upper(classKey);
+    if BordoUI_IsRacialSpell(name, key) then return false; end
+    if not name or name == "" or name == "Ability" then return false; end
+
+    local cName = CanonicalSpellKey(name);
+    local cKey = key and CanonicalSpellKey(key) or "";
+
+    -- 1. Check StarterSpells
+    local st = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[upper];
+    if st then
+        local st1 = st[1] or st;
+        if (st1.name and st1.name == name) or (cName ~= "" and CanonicalSpellKey(st1.name) == cName) or (cKey ~= "" and CanonicalSpellKey(st1.key) == cKey) or (icon and st1.icon and IconsMatch(st1.icon, icon)) then
+            return true;
+        end
+    end
+
+    -- 2. Check Catalog Spells (master list)
+    local catList = BordoUI_Catalog and BordoUI_Catalog.Spells and (BordoUI_Catalog.Spells[upper] or BordoUI_Catalog.Spells[classKey]);
+    if catList then
+        for _, sp in ipairs(catList) do
+            if (sp.name and sp.name == name) or (cName ~= "" and CanonicalSpellKey(sp.name) == cName) or (cKey ~= "" and CanonicalSpellKey(sp.key) == cKey) or (icon and sp.icon and IconsMatch(sp.icon, icon)) then
+                return true;
+            end
+        end
+    end
+
+    -- 3. Check BordoUI_BuildData.Spells alias
+    local bSpells = BordoUI_BuildData and BordoUI_BuildData.Spells and (BordoUI_BuildData.Spells[upper] or BordoUI_BuildData.Spells[classKey]);
+    if bSpells and bSpells ~= catList then
+        for _, sp in ipairs(bSpells) do
+            if (sp.name and sp.name == name) or (cName ~= "" and CanonicalSpellKey(sp.name) == cName) or (cKey ~= "" and CanonicalSpellKey(sp.key) == cKey) or (icon and sp.icon and IconsMatch(sp.icon, icon)) then
+                return true;
+            end
+        end
+    end
+
+    -- 4. Check class default build spells
+    local defBuilds = BordoUI_BuildData and BordoUI_BuildData.Builds and BordoUI_BuildData.Builds[upper];
+    if defBuilds then
+        for bI = 1, table.getn(defBuilds) do
+            local bDef = defBuilds[bI];
+            if bDef and bDef.spells then
+                for sI = 1, table.getn(bDef.spells) do
+                    local sp = bDef.spells[sI];
+                    if sp and ((sp.name and sp.name == name) or (cName ~= "" and CanonicalSpellKey(sp.name) == cName) or (cKey ~= "" and CanonicalSpellKey(sp.key) == cKey) or (icon and sp.icon and IconsMatch(sp.icon, icon))) then
+                        return true;
+                    end
+                end
+            end
+        end
+    end
+
+    return false;
+end
+
+-- Multi-Starter Live Helper: Retrieve current live detected starters for a class (strictly sanitized)
 function BordoUI_GetLiveStartersList(classKey)
     local cUpper = string.upper(classKey or "WARRIOR");
     local curLive = BordoUIDB and BordoUIDB.liveStarters and BordoUIDB.liveStarters[cUpper];
+    local cleanList = {};
+
     if curLive and curLive.starters and table.getn(curLive.starters) > 0 then
-        return curLive.starters;
-    end
-    if curLive and (curLive.starter1 or curLive.starter2) then
-        local list = {};
-        for s = 1, 6 do
-            if curLive["starter" .. s] then
-                table.insert(list, curLive["starter" .. s]);
+        for _, st in ipairs(curLive.starters) do
+            if st and st.name and BordoUI_IsClassSpell(cUpper, st.name, st.key, st.icon) then
+                table.insert(cleanList, st);
             end
         end
-        if table.getn(list) > 0 then return list; end
+        if table.getn(cleanList) > 0 then
+            return cleanList;
+        end
     end
+
+    if curLive and (curLive.starter1 or curLive.starter2) then
+        for s = 1, 6 do
+            local st = curLive["starter" .. s];
+            if st and st.name and BordoUI_IsClassSpell(cUpper, st.name, st.key, st.icon) then
+                table.insert(cleanList, st);
+            end
+        end
+        if table.getn(cleanList) > 0 then
+            return cleanList;
+        end
+    end
+
     local baseStarter = BordoUI_BuildData and BordoUI_BuildData.StarterSpells and BordoUI_BuildData.StarterSpells[cUpper];
     if baseStarter then
         local st1 = baseStarter[1] or baseStarter;
@@ -2722,39 +2871,34 @@ function BordoUI_GetLiveStartersList(classKey)
     return {};
 end
 
--- Multi-Starter Dynamic Synchronizer: Places K starters into the last K slots (6, 5, 4...) and leaves 6 - K slots open for pick priorities
-function BordoUI_SyncBuildStarters(cb, startersList)
+-- Multi-Starter Dynamic Synchronizer: Places K starters into open slots and protects customized user builds
+function BordoUI_SyncBuildStarters(cb, startersList, classKey)
     if not (cb and cb.spells and startersList) then return; end
+    local cUpper = classKey and string.upper(classKey);
+    if not cUpper and cb.id then
+        local _, _, parsedCls = string.find(cb.id, "^custom_([^_]+)_");
+        if parsedCls then cUpper = string.upper(parsedCls); end
+    end
+    if not cUpper then return; end
+
     local numStarters = table.getn(startersList);
     if numStarters <= 0 then return; end
     if numStarters > 6 then numStarters = 6; end
 
-    -- Automatic migration for legacy builds where slots 1..4 are empty and starters sat at slots 5..6:
-    local hasCustomDraft = false;
-    for s = 1, 4 do
-        if cb.spells[s] then
-            hasCustomDraft = true;
-            break;
-        end
-    end
-    if not hasCustomDraft then
-        local bottomStarters = {};
-        for s = 5, 6 do
-            if cb.spells[s] then
-                table.insert(bottomStarters, cb.spells[s]);
+    -- Sanitize cb.spells: Purge any spells that do not belong to this class, are racials, or are generic "Ability"
+    for s = 1, 6 do
+        local sp = cb.spells[s];
+        if sp then
+            if BordoUI_IsRacialSpell(sp.name, sp.key) or not BordoUI_IsClassSpell(cUpper, sp.name, sp.key, sp.icon) or sp.name == "Ability" or sp.name == "" then
                 cb.spells[s] = nil;
             end
-        end
-        for idx = 1, table.getn(bottomStarters) do
-            cb.spells[idx] = bottomStarters[idx];
-            if cb.clearedSlots then cb.clearedSlots[idx] = nil; end
         end
     end
 
     -- Process each starter spell:
     for i = 1, numStarters do
         local st = startersList[i];
-        if st and st.name then
+        if st and st.name and BordoUI_IsClassSpell(cUpper, st.name, st.key, st.icon) then
             local existingSlot = nil;
             for sIdx = 1, 6 do
                 local sp = cb.spells[sIdx];
@@ -2767,8 +2911,9 @@ function BordoUI_SyncBuildStarters(cb, startersList)
                 end
             end
 
-            -- If starter is not anywhere in the build yet, place into slot i (or first open slot):
-            if not existingSlot then
+            -- If starter is not anywhere in the build yet:
+            -- If user has NOT manually customized/locked this build, place into open slot:
+            if not existingSlot and not cb.userModified then
                 local targetSlot = nil;
                 if not cb.spells[i] and not (cb.clearedSlots and cb.clearedSlots[i]) then
                     targetSlot = i;
@@ -2838,13 +2983,16 @@ function BordoUI_GetClassBuilds(classKey)
         if b and b.spells then
             for sIdx = 1, 6 do
                 local sp = b.spells[sIdx];
-                if sp and (sp.name == "Ability" or sp.name == "") then
-                    b.spells[sIdx] = nil;
-                elseif sp and (not sp.rankMax or sp.rankMax <= 5) then
-                    sp.rankMax = 8;
+                if sp then
+                    -- Sanitize: purge cross-class spells, racials, or empty ability names
+                    if BordoUI_IsRacialSpell(sp.name, sp.key) or not BordoUI_IsClassSpell(upper, sp.name, sp.key, sp.icon) or sp.name == "Ability" or sp.name == "" then
+                        b.spells[sIdx] = nil;
+                    elseif not sp.rankMax or sp.rankMax <= 5 then
+                        sp.rankMax = 8;
+                    end
                 end
             end
-            BordoUI_SyncBuildStarters(b, startersList);
+            BordoUI_SyncBuildStarters(b, startersList, upper);
         end
         if b and b.jewelry then
             for jKey, jItem in pairs(b.jewelry) do
@@ -4337,3 +4485,6 @@ BordoUI_Catalog.Jewelry = {
     { slotType = "NECK", class = "HUNTER", spell = "Hunter's Mark", name = "Eye of the Splitting Sky: Hunter's Mark", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Hunter's Mark", desc = "Legendary amulet - remakes Hunter's Mark\nHunter's Mark increases all damage dealt to target by an extra 15%." },
     { slotType = "NECK", class = "HUNTER", spell = "Rapid Fire", name = "Eye of the Splitting Sky: Rapid Fire", icon = "Interface\\Icons\\INV_Jewelry_Necklace_16", quality = 5, benefit = "Remakes Rapid Fire", desc = "Legendary amulet - remakes Rapid Fire\nRapid Fire duration increased by 40% and grants +25% attack speed." },
 };
+
+-- Master alias to guarantee BordoUI_BuildData.Spells points to Catalog
+BordoUI_BuildData.Spells = BordoUI_Catalog.Spells;

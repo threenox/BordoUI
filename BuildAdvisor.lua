@@ -179,20 +179,22 @@ local function SpellKeyToName(key)
 end
 
 -- Resolve spell details from an action slot (checks tooltip, AZS_SPELLS, and class spell tables)
+-- Resolve spell details from an action slot (checks tooltip, AZS_SPELLS, and class spell tables)
 local function BordoUI_ResolveSpellFromAction(actSlot, pClass)
-    if not actSlot or actSlot < 1 or actSlot > 12 then return nil; end
+    if not actSlot or actSlot < 1 or actSlot > 6 then return nil; end -- Buttons 1..6 only (button 12 carries racial)
     local aName, aTex = GetActionSlotSpell(actSlot);
     local resName = aName or "";
     local resTex = aTex;
     local resKey = "";
 
     -- 1. Check AZS_SPELLS managed by Azeroth Survivors engine
+    -- In Azeroth Survivors:
+    -- The last entry in AZS_SPELLS (entry total) is the racial ability on button 12.
+    -- Regular abilities fill buttons 1 to (total - 1), up to a max of 6.
     if AZS_SPELLS and table.getn(AZS_SPELLS) > 0 then
         local total = table.getn(AZS_SPELLS);
         local entry = nil;
-        if actSlot == 12 then
-            entry = AZS_SPELLS[total];
-        elseif actSlot <= total and actSlot <= 6 then
+        if actSlot < total and actSlot <= 6 then
             entry = AZS_SPELLS[actSlot];
         end
         if entry then
@@ -213,14 +215,19 @@ local function BordoUI_ResolveSpellFromAction(actSlot, pClass)
         end
     end
 
+    -- Filter out racials immediately
+    if BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(resName, resKey) then
+        return nil;
+    end
+
     -- 2. Translate key if name is still empty
     if resName == "" and resKey ~= "" then
         resName = SpellKeyToName(resKey);
     end
 
-    -- 3. Lookup against class spell table by texture
+    -- 3. Lookup against class spell table by texture or name
     local cUpper = pClass and string.upper(pClass);
-    local classSpells = cUpper and BordoUI_BuildData and BordoUI_BuildData.Spells and BordoUI_BuildData.Spells[cUpper];
+    local classSpells = cUpper and BordoUI_Catalog and BordoUI_Catalog.Spells and (BordoUI_Catalog.Spells[cUpper] or BordoUI_Catalog.Spells[pClass]);
     if (resName == "" or not resTex) and classSpells and resTex then
         for _, spDef in ipairs(classSpells) do
             if spDef.icon and IconsMatch(spDef.icon, resTex) then
@@ -236,28 +243,38 @@ local function BordoUI_ResolveSpellFromAction(actSlot, pClass)
         if resName == "" then resName = baseSt.name; end
     end
 
-    if resName ~= "" or (resTex and resTex ~= "") then
-        local foundSchool = "Physical";
-        if classSpells then
-            for _, spDef in ipairs(classSpells) do
-                if (resName ~= "" and spDef.name == resName) or (resTex and IconsMatch(spDef.icon, resTex)) then
-                    foundSchool = spDef.school or foundSchool;
-                    if resName == "" then resName = spDef.name; end
-                    if not resTex or resTex == "" then resTex = spDef.icon; end
-                    break;
-                end
-            end
-        end
-        return {
-            name = resName ~= "" and resName or "Ability",
-            icon = resTex or "Interface\\Icons\\INV_Misc_QuestionMark",
-            key = resKey ~= "" and resKey or CanonicalSpellKey(resName),
-            school = foundSchool,
-            isStarter = true,
-        };
+    -- If name is still empty, or is generic "Ability", or is a racial: return nil!
+    if resName == "" or resName == "Ability" then
+        return nil;
+    end
+    if BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(resName, resKey) then
+        return nil;
     end
 
-    return nil;
+    -- Strictly enforce that the resolved spell belongs to the character's class!
+    if BordoUI_IsClassSpell and not BordoUI_IsClassSpell(cUpper, resName, resKey, resTex) then
+        return nil;
+    end
+
+    local foundSchool = "Physical";
+    if classSpells then
+        for _, spDef in ipairs(classSpells) do
+            if (resName ~= "" and spDef.name == resName) or (resTex and IconsMatch(spDef.icon, resTex)) then
+                foundSchool = spDef.school or foundSchool;
+                if resName == "" then resName = spDef.name; end
+                if not resTex or resTex == "" then resTex = spDef.icon; end
+                break;
+            end
+        end
+    end
+
+    return {
+        name = resName,
+        icon = resTex or "Interface\\Icons\\INV_Misc_QuestionMark",
+        key = resKey ~= "" and resKey or CanonicalSpellKey(resName),
+        school = foundSchool,
+        isStarter = true,
+    };
 end
 
 -- Automatic live detection of starter spells from character action bar (supports 1..6 starters)
@@ -300,22 +317,29 @@ function BordoUI_DetectLiveStarters()
     if isRunStart then
         local detectedList = {};
         local seenSpells = {};
+        local totalAzs = AZS_SPELLS and table.getn(AZS_SPELLS) or 0;
         for slot = 1, 6 do
             local hasAction = false;
             if GetActionTexture and GetActionTexture(slot) then
                 hasAction = true;
             elseif HasAction and HasAction(slot) then
                 hasAction = true;
-            elseif AZS_SPELLS and AZS_SPELLS[slot] then
+            elseif AZS_SPELLS and slot < totalAzs and AZS_SPELLS[slot] then
                 hasAction = true;
             end
 
             if hasAction then
                 local sp = BordoUI_ResolveSpellFromAction(slot, pClass);
-                if sp then
-                    sp.isStarter = true;
-                    sp.slot = slot;
-                    table.insert(detectedList, sp);
+                if sp and sp.name and sp.name ~= "Ability" and sp.name ~= "" then
+                    if (not BordoUI_IsRacialSpell or not BordoUI_IsRacialSpell(sp.name, sp.key)) and (not BordoUI_IsClassSpell or BordoUI_IsClassSpell(pClass, sp.name, sp.key, sp.icon)) then
+                        local cKey = CanonicalSpellKey(sp.name);
+                        if not seenSpells[cKey] then
+                            seenSpells[cKey] = true;
+                            sp.isStarter = true;
+                            sp.slot = slot;
+                            table.insert(detectedList, sp);
+                        end
+                    end
                 end
             end
         end
@@ -350,7 +374,7 @@ function BordoUI_DetectLiveStarters()
                 for idx = 1, 3 do
                     local cb = BordoUIDB.customBuilds[pClass][idx];
                     if cb and cb.spells and BordoUI_SyncBuildStarters then
-                        BordoUI_SyncBuildStarters(cb, detectedList);
+                        BordoUI_SyncBuildStarters(cb, detectedList, pClass);
                     end
                 end
             end
@@ -360,7 +384,9 @@ end
 
 local function IsClassStarter(className, name, key, icon)
     if not className then return false, 0, nil; end
+    if BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(name, key) then return false, 0, nil; end
     local cUpper = string.upper(className);
+    if BordoUI_IsClassSpell and not BordoUI_IsClassSpell(cUpper, name, key, icon) then return false, 0, nil; end
 
     -- 1. Check live detected starters for this character
     if BordoUIDB and BordoUIDB.liveStarters and BordoUIDB.liveStarters[cUpper] then
@@ -408,7 +434,7 @@ local function GetCustomBuild(classKey, buildIdx)
     local startersList = BordoUI_GetLiveStartersList and BordoUI_GetLiveStartersList(cUpper);
 
     if cb and cb.spells and startersList and table.getn(startersList) > 0 and BordoUI_SyncBuildStarters then
-        BordoUI_SyncBuildStarters(cb, startersList);
+        BordoUI_SyncBuildStarters(cb, startersList, cUpper);
     end
     if cb and cb.jewelry then
         for k, v in pairs(cb.jewelry) do
@@ -3014,7 +3040,8 @@ RefreshChoiceHUD = function()
                     end
                 end
                 local isStarter = IsClassStarter(actClass, eName, eKey, eIcon);
-                if not inBuild and not isStarter then
+                local isRacial = BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(eName, eKey);
+                if not inBuild and not isStarter and not isRacial then
                     table.insert(talentSpells, {
                         name = eName,
                         icon = (type(eIcon) == "string" and eIcon) or "Interface\\Icons\\INV_Misc_QuestionMark",
