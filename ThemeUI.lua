@@ -1903,7 +1903,45 @@ local function SkinChatButton(btn, symbol)
 	end)
 end
 
+function AZSHelper:DockChatFrame(cf)
+	if not cf or not BordoUI_ChatBox then return end
+	cf:SetParent(BordoUI_ChatBox)
+	cf:ClearAllPoints()
+	cf:SetPoint("TOPLEFT", BordoUI_ChatBox, "TOPLEFT", 28, -24)
+	cf:SetWidth(BordoUI_ChatBox:GetWidth() - 34)
+	cf:SetHeight(BordoUI_ChatBox:GetHeight() - 30)
+	cf:SetFrameLevel(BordoUI_ChatBox:GetFrameLevel() + 2)
+	cf:SetClampedToScreen(false)
+	cf:SetMovable(false)
+	cf:SetUserPlaced(1)
+	if cf:GetName() then
+		local resizeBtn = getglobal(cf:GetName() .. "ResizeButton")
+		if resizeBtn then resizeBtn:Hide() end
+	end
+end
+
+function AZSHelper:DockAllChatFrames()
+	if not BordoUI_ChatBox then return end
+	for i = 1, 7 do
+		local cf = getglobal("ChatFrame" .. i)
+		if cf then
+			AZSHelper:DockChatFrame(cf)
+		end
+	end
+	if ChatFrame1Tab and BordoUI_ChatTitle then
+		ChatFrame1Tab:ClearAllPoints()
+		ChatFrame1Tab:SetPoint("LEFT", BordoUI_ChatTitle, "RIGHT", 8, 0)
+	end
+	local editBox = getglobal("ChatFrameEditBox")
+	if editBox and BordoUI_ChatBox then
+		editBox:ClearAllPoints()
+		editBox:SetPoint("TOPLEFT", BordoUI_ChatBox, "BOTTOMLEFT", 6, -2)
+		editBox:SetPoint("TOPRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", -6, -2)
+	end
+end
+
 function AZSHelper:SkinChatWindow()
+		if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
 	local chat = ChatFrame1
 	if not chat or BordoUI_ChatBox then return end
 
@@ -1937,7 +1975,7 @@ function AZSHelper:SkinChatWindow()
 	chatHeader:EnableMouse(true)
 	chatHeader:RegisterForDrag("LeftButton")
 
-	local chatTitle = chatHeader:CreateFontString(nil, "OVERLAY")
+	local chatTitle = chatHeader:CreateFontString("BordoUI_ChatTitle", "OVERLAY")
 	chatTitle:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
 	chatTitle:SetPoint("LEFT", chatHeader, "LEFT", 8, 0)
 	chatTitle:SetTextColor(0.85, 0.85, 0.88)
@@ -1949,25 +1987,22 @@ function AZSHelper:SkinChatWindow()
 		BordoUIDB.chatPos = { point = pt, relativePoint = relPt, x = x, y = y }
 	end
 
-	chatHeader:SetScript("OnDragStart", function()
+	local function StartChatDrag()
 		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 			chatBox:StartMoving()
 		end
-	end)
-	chatHeader:SetScript("OnDragStop", function()
+	end
+	local function StopChatDrag()
 		chatBox:StopMovingOrSizing()
 		SaveChatPos()
-	end)
+		AZSHelper:DockAllChatFrames()
+	end
 
-	chatBox:SetScript("OnDragStart", function()
-		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-			chatBox:StartMoving()
-		end
-	end)
-	chatBox:SetScript("OnDragStop", function()
-		chatBox:StopMovingOrSizing()
-		SaveChatPos()
-	end)
+	chatHeader:SetScript("OnDragStart", StartChatDrag)
+	chatHeader:SetScript("OnDragStop", StopChatDrag)
+
+	chatBox:SetScript("OnDragStart", StartChatDrag)
+	chatBox:SetScript("OnDragStop", StopChatDrag)
 
 	if ( BordoUI and BordoUI.AttachLockButton ) then
 		BordoUI:AttachLockButton(chatBox, "TOPRIGHT", chatHeader, "TOPRIGHT", -4, -3)
@@ -1978,17 +2013,11 @@ function AZSHelper:SkinChatWindow()
 		AZSHelper:RestorePosition(chatBox, BordoUIDB.chatPos)
 	end
 
-	-- Bind ChatFrame1 cleanly inside chatBox
-	chat:SetParent(chatBox)
-	chat:SetFrameLevel(chatBox:GetFrameLevel() + 2)
-	chat:SetMovable(false)
-	chat:SetClampedToScreen(true)
-	chat:ClearAllPoints()
-	chat:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 28, -24)
-	chat:SetPoint("BOTTOMRIGHT", chatBox, "BOTTOMRIGHT", -6, 6)
+	-- Dock all chat frames cleanly inside chatBox
+	AZSHelper:DockAllChatFrames()
 
 	if FCF_SetLocked then
-		FCF_SetLocked(chat, nil)
+		FCF_SetLocked(chat, 1)
 	end
 
 	-- Modern Scroll Buttons docked inside left margin of chatBox
@@ -2030,16 +2059,18 @@ function AZSHelper:SkinChatWindow()
 			if tLeft then tLeft:SetAlpha(0) end
 			if tMid then tMid:SetAlpha(0) end
 			if tRight then tRight:SetAlpha(0) end
+			tab:SetParent(chatHeader)
+			tab:SetFrameLevel(chatHeader:GetFrameLevel() + 2)
+			tab:RegisterForDrag("LeftButton")
+			tab:SetScript("OnDragStart", StartChatDrag)
+			tab:SetScript("OnDragStop", StopChatDrag)
 		end
-	end
-	if ChatFrame1Tab then
-		ChatFrame1Tab:ClearAllPoints()
-		ChatFrame1Tab:SetPoint("LEFT", chatTitle, "RIGHT", 8, 0)
-	end
-
-	for i = 1, 7 do
 		local cf = getglobal("ChatFrame"..i)
 		if cf then
+			cf:EnableMouse(true)
+			cf:RegisterForDrag("LeftButton")
+			cf:SetScript("OnDragStart", StartChatDrag)
+			cf:SetScript("OnDragStop", StopChatDrag)
 			cf:EnableMouseWheel(true)
 			cf:SetScript("OnMouseWheel", function()
 				if arg1 > 0 then
@@ -2048,6 +2079,44 @@ function AZSHelper:SkinChatWindow()
 					if IsShiftKeyDown() then this:ScrollToBottom() else this:ScrollDown() end
 				end
 			end)
+		end
+	end
+	if ChatFrame1Tab then
+		ChatFrame1Tab:ClearAllPoints()
+		ChatFrame1Tab:SetPoint("LEFT", chatTitle, "RIGHT", 8, 0)
+	end
+
+	-- Hook Blizzard FCF functions to maintain docking and prevent text stretching
+	if type(FCF_RestorePositionAndDimensions) == "function" and not AZSHelper._FCF_RestoreHooked then
+		AZSHelper._FCF_RestoreHooked = true
+		local orig_FCF_Restore = FCF_RestorePositionAndDimensions
+		FCF_RestorePositionAndDimensions = function(chatFrame)
+			orig_FCF_Restore(chatFrame)
+			if BordoUI_ChatBox then
+				AZSHelper:DockAllChatFrames()
+			end
+		end
+	end
+
+	if type(FCF_DockUpdate) == "function" and not AZSHelper._FCF_DockHooked then
+		AZSHelper._FCF_DockHooked = true
+		local orig_FCF_DockUpdate = FCF_DockUpdate
+		FCF_DockUpdate = function()
+			orig_FCF_DockUpdate()
+			if BordoUI_ChatBox then
+				AZSHelper:DockAllChatFrames()
+			end
+		end
+	end
+
+	if type(FCF_SetLocked) == "function" and not AZSHelper._FCF_LockHooked then
+		AZSHelper._FCF_LockHooked = true
+		local orig_FCF_SetLocked = FCF_SetLocked
+		FCF_SetLocked = function(chatFrame, isLocked)
+			orig_FCF_SetLocked(chatFrame, 1)
+			if BordoUI_ChatBox then
+				AZSHelper:DockAllChatFrames()
+			end
 		end
 	end
 end
@@ -2132,6 +2201,7 @@ eventHandler:SetScript("OnEvent", function()
 		HideDefaultBlizzardFrames()
 		AZSHelper:ApplySquareMinimapStyle()
 		AZSHelper:SkinChatWindow()
+		if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
 		UpdatePortrait(player)
 		UpdateUnitFrame(player)
 		RestoreHudPosition()
@@ -2199,6 +2269,7 @@ function BordoUI_ResetThemeUI()
 	if BordoUI_ChatBox then
 		BordoUI_ChatBox:ClearAllPoints()
 		BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20)
+		if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
 	end
 	if BordoUI and BordoUI.HighestCritFrame and BordoUI.StatsWindow and BordoUI.StatsWindow.frame then
 		BordoUI.HighestCritFrame:ClearAllPoints()

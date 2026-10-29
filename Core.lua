@@ -10,7 +10,7 @@ BordoUI.version = "2.2.24";
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
 tipAnchor:SetHeight(80);
-tipAnchor:SetPoint("BOTTOMLEFT", ChatFrame1 or UIParent, "BOTTOMRIGHT", 12, 0);
+tipAnchor:SetPoint("BOTTOMLEFT", BordoUI_ChatBox or ChatFrame1 or UIParent, "BOTTOMRIGHT", 12, 0);
 tipAnchor:SetMovable(true);
 tipAnchor:SetClampedToScreen(true);
 tipAnchor:EnableMouse(false);
@@ -19,6 +19,8 @@ local function PlaceTooltip(tooltip)
 	tooltip:ClearAllPoints();
 	if ( BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point ) then
 		BordoUI:RestorePosition(tooltip, BordoUIDB.tooltipPos);
+	elseif ( BordoUI_ChatBox ) then
+		tooltip:SetPoint("BOTTOMLEFT", BordoUI_ChatBox, "BOTTOMRIGHT", 12, 0);
 	elseif ( ChatFrame1 ) then
 		tooltip:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
 	else
@@ -240,9 +242,9 @@ eventFrame:SetScript("OnEvent", function()
             if ( BordoUI.UpdateLockState ) then
                 BordoUI:UpdateLockState();
             end
-            local targetChat = BordoUI_ChatBox or ChatFrame1;
-            if ( targetChat and BordoUIDB and BordoUIDB.chatPos ) then
-                BordoUI:RestorePosition(targetChat, BordoUIDB.chatPos);
+            if ( BordoUI_ChatBox and BordoUIDB and BordoUIDB.chatPos ) then
+                BordoUI:RestorePosition(BordoUI_ChatBox, BordoUIDB.chatPos);
+                if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
             end
         end
     end
@@ -650,6 +652,12 @@ function BordoUI:ToggleMoveMode(enable)
                         BordoUIDB.meterPos = pos;
                         BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
                         BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
+                    elseif ( saveKey == "chatPos" ) then
+                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
+                        BordoUIDB.chatPos = pos;
+                        f:ClearAllPoints();
+                        f:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
+                        if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
                     else
                         BordoUIDB[saveKey] = { point = pt, relativePoint = relPt, x = x, y = y };
                     end
@@ -670,6 +678,7 @@ function BordoUI:ToggleMoveMode(enable)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cff55ff55[ACTIVE]|r. Drag any colored box to reposition. Click |cffffd100[Lock All Windows]|r or type |cffffd100/lock|r when done.");
     else
         BordoUI.controlBar:Hide();
+        if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cffff3333[OFF]|r. All window positions saved.");
     end
 end
@@ -706,7 +715,9 @@ function BordoUI:ResetToDefaultLayout()
     end
 	if ( BordoUI_TooltipAnchor ) then
 		BordoUI_TooltipAnchor:ClearAllPoints();
-		if ( ChatFrame1 ) then
+		if ( BordoUI_ChatBox ) then
+			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", BordoUI_ChatBox, "BOTTOMRIGHT", 12, 0);
+		elseif ( ChatFrame1 ) then
 			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
 		else
 			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
@@ -720,9 +731,7 @@ function BordoUI:ResetToDefaultLayout()
     if ( BordoUI_ChatBox ) then
         BordoUI_ChatBox:ClearAllPoints();
         BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
-    elseif ( ChatFrame1 ) then
-        ChatFrame1:ClearAllPoints();
-        ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
+        if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
     end
     if ( AZSHelper_BossEncounterContainer ) then
         AZSHelper_BossEncounterContainer:ClearAllPoints();
