@@ -1203,10 +1203,31 @@ local CLASS_COORDS = {
 	["PALADIN"]     = { 0.00, 0.25, 0.50, 0.75 },
 }
 
+local CLASS_NORMALIZE = {
+	["1"] = "WARRIOR", ["WARRIOR"] = "WARRIOR", ["KRIEGER"] = "WARRIOR", ["GUERRIER"] = "WARRIOR", ["GUERRERO"] = "WARRIOR",
+	["2"] = "PALADIN", ["PALADIN"] = "PALADIN",
+	["3"] = "HUNTER", ["HUNTER"] = "HUNTER", ["JAEGER"] = "HUNTER", ["JAGER"] = "HUNTER", ["CHASSEUR"] = "HUNTER", ["CAZADOR"] = "HUNTER",
+	["4"] = "ROGUE", ["ROGUE"] = "ROGUE", ["SCHURKE"] = "ROGUE", ["VOLEUR"] = "ROGUE", ["PICARO"] = "ROGUE",
+	["5"] = "PRIEST", ["PRIEST"] = "PRIEST", ["PRIESTER"] = "PRIEST", ["PRETRE"] = "PRIEST", ["SACERDOTE"] = "PRIEST",
+	["7"] = "SHAMAN", ["SHAMAN"] = "SHAMAN", ["SCHAMANE"] = "SHAMAN", ["CHAMAN"] = "SHAMAN",
+	["8"] = "MAGE", ["MAGE"] = "MAGE", ["MAGIER"] = "MAGE", ["MAGO"] = "MAGE",
+	["9"] = "WARLOCK", ["WARLOCK"] = "WARLOCK", ["HEXENMEISTER"] = "WARLOCK", ["DEMONISTE"] = "WARLOCK", ["BRUJO"] = "WARLOCK",
+	["11"] = "DRUID", ["DRUID"] = "DRUID", ["DRUIDE"] = "DRUID", ["DRUIDA"] = "DRUID",
+}
+
+local function NormalizeClassKey(raw)
+	if not raw then return nil end
+	local s = string.upper(tostring(raw))
+	local clean = string.gsub(s, "[^%w]", "")
+	if CLASS_NORMALIZE[s] then return CLASS_NORMALIZE[s] end
+	if CLASS_NORMALIZE[clean] then return CLASS_NORMALIZE[clean] end
+	if string.find(clean, "J") and string.find(clean, "GER") then return "HUNTER" end
+	return s
+end
+
 CLASS_COORDS["KRIEGER"]      = CLASS_COORDS["WARRIOR"]
 CLASS_COORDS["MAGIER"]       = CLASS_COORDS["MAGE"]
 CLASS_COORDS["SCHURKE"]      = CLASS_COORDS["ROGUE"]
-CLASS_COORDS["JÃ„GER"]        = CLASS_COORDS["HUNTER"]
 CLASS_COORDS["JAEGER"]       = CLASS_COORDS["HUNTER"]
 CLASS_COORDS["SCHAMANE"]     = CLASS_COORDS["SHAMAN"]
 CLASS_COORDS["PRIESTER"]     = CLASS_COORDS["PRIEST"]
@@ -1226,7 +1247,6 @@ local CLASS_FALLBACK_ICONS = {
 CLASS_FALLBACK_ICONS["KRIEGER"]      = CLASS_FALLBACK_ICONS["WARRIOR"]
 CLASS_FALLBACK_ICONS["MAGIER"]       = CLASS_FALLBACK_ICONS["MAGE"]
 CLASS_FALLBACK_ICONS["SCHURKE"]      = CLASS_FALLBACK_ICONS["ROGUE"]
-CLASS_FALLBACK_ICONS["JÃ„GER"]        = CLASS_FALLBACK_ICONS["HUNTER"]
 CLASS_FALLBACK_ICONS["JAEGER"]       = CLASS_FALLBACK_ICONS["HUNTER"]
 CLASS_FALLBACK_ICONS["SCHAMANE"]     = CLASS_FALLBACK_ICONS["SHAMAN"]
 CLASS_FALLBACK_ICONS["PRIESTER"]     = CLASS_FALLBACK_ICONS["PRIEST"]
@@ -1234,7 +1254,7 @@ CLASS_FALLBACK_ICONS["HEXENMEISTER"] = CLASS_FALLBACK_ICONS["WARLOCK"]
 
 function SurvivorUI_ClassIcon(class)
 	if not class then return nil, nil end
-	local upper = string.upper(tostring(class))
+	local upper = NormalizeClassKey(class) or string.upper(tostring(class))
 	local coords = CLASS_COORDS[upper] or (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[upper])
 	if coords then
 		return "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes", coords
@@ -1246,25 +1266,29 @@ function SurvivorUI_ClassIcon(class)
 end
 
 local function ResolvePlayerClass(name, rawClass)
-	if rawClass and rawClass ~= "" then
-		return string.upper(tostring(rawClass))
+	local norm = NormalizeClassKey(rawClass)
+	if norm and (CLASS_COORDS[norm] or CLASS_FALLBACK_ICONS[norm]) then
+		return norm
 	end
 	if AZS_PARTY then
 		for p = 1, table.getn(AZS_PARTY) do
 			local m = AZS_PARTY[p]
-			if m and m.name == name and m.class and m.class ~= "" then
-				return string.upper(tostring(m.class))
+			if m and m.name == name and m.class then
+				local cNorm = NormalizeClassKey(m.class)
+				if cNorm and (CLASS_COORDS[cNorm] or CLASS_FALLBACK_ICONS[cNorm]) then
+					return cNorm
+				end
 			end
 		end
 	end
 	if UnitName("player") == name then
 		local _, eng = UnitClass("player")
-		if eng then return string.upper(eng) end
+		if eng then return NormalizeClassKey(eng) end
 	end
 	for i = 1, 4 do
 		if UnitName("party"..i) == name then
 			local _, eng = UnitClass("party"..i)
-			if eng then return string.upper(eng) end
+			if eng then return NormalizeClassKey(eng) end
 		end
 	end
 	return nil

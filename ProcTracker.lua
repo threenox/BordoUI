@@ -99,6 +99,26 @@ procFrame:SetScript("OnDragStart", function()
         procFrame:StartMoving();
     end
 end);
+procFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" then
+        MouselookStart();
+    end
+end);
+procFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" then
+        MouselookStop();
+    end
+end);
+procFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" then
+        MouselookStart();
+    end
+end);
+procFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" then
+        MouselookStop();
+    end
+end);
 procFrame:SetScript("OnDragStop", function()
     procFrame:StopMovingOrSizing();
     local pt, _, relPt, x, y = procFrame:GetPoint();
@@ -138,6 +158,8 @@ for i = 1, MAX_PROCS do
     slot.timerText = timerText;
     
     slot:EnableMouse(true);
+    slot:SetScript("OnMouseDown", function() if arg1 == "RightButton" then MouselookStart(); end end);
+    slot:SetScript("OnMouseUp", function() if arg1 == "RightButton" then MouselookStop(); end end);
     slot:SetScript("OnEnter", function()
         if ( slot.buffIndex ) then
             GameTooltip:SetOwner(slot, "ANCHOR_TOP");

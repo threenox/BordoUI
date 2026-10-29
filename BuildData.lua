@@ -2838,7 +2838,9 @@ function BordoUI_GetClassBuilds(classKey)
         if b and b.spells then
             for sIdx = 1, 6 do
                 local sp = b.spells[sIdx];
-                if sp and (not sp.rankMax or sp.rankMax <= 5) then
+                if sp and (sp.name == "Ability" or sp.name == "") then
+                    b.spells[sIdx] = nil;
+                elseif sp and (not sp.rankMax or sp.rankMax <= 5) then
                     sp.rankMax = 8;
                 end
             end

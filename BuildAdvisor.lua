@@ -192,7 +192,7 @@ local function BordoUI_ResolveSpellFromAction(actSlot, pClass)
         local entry = nil;
         if actSlot == 12 then
             entry = AZS_SPELLS[total];
-        elseif actSlot < total and actSlot <= 6 then
+        elseif actSlot <= total and actSlot <= 6 then
             entry = AZS_SPELLS[actSlot];
         end
         if entry then
@@ -299,6 +299,7 @@ function BordoUI_DetectLiveStarters()
 
     if isRunStart then
         local detectedList = {};
+        local seenSpells = {};
         for slot = 1, 6 do
             local hasAction = false;
             if GetActionTexture and GetActionTexture(slot) then
@@ -953,6 +954,8 @@ for sIdx = 1, 6 do
                 local temp = cb.spells[idx];
                 cb.spells[idx] = cb.spells[idx - 1];
                 cb.spells[idx - 1] = temp;
+                cb.isCustomized = true;
+                cb.userModified = true;
                 if cb.clearedSlots then
                     cb.clearedSlots[idx] = nil;
                     cb.clearedSlots[idx - 1] = nil;
@@ -988,6 +991,8 @@ for sIdx = 1, 6 do
                 local temp = cb.spells[idx];
                 cb.spells[idx] = cb.spells[idx + 1];
                 cb.spells[idx + 1] = temp;
+                cb.isCustomized = true;
+                cb.userModified = true;
                 if cb.clearedSlots then
                     cb.clearedSlots[idx] = nil;
                     cb.clearedSlots[idx + 1] = nil;
@@ -1019,6 +1024,8 @@ for sIdx = 1, 6 do
         local cb = GetCustomBuild(currentClass, currentBuildIdx);
         if cb and cb.spells then
             cb.spells[this.sIdx] = nil;
+            cb.isCustomized = true;
+            cb.userModified = true;
             cb.clearedSlots = cb.clearedSlots or {};
             cb.clearedSlots[this.sIdx] = true;
             BordoUI_BuildAdvisor_Refresh();
@@ -1733,6 +1740,8 @@ for r = 1, 12 do
                 reason = "Custom Priority #" .. currentTargetSlot,
             };
             if cb.clearedSlots then cb.clearedSlots[currentTargetSlot] = nil; end
+            cb.isCustomized = true;
+            cb.userModified = true;
             PlaySound("igSpellBookOpen");
             DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Set Spell #" .. currentTargetSlot .. " to |cff00ff00" .. d.name .. "|r");
         else
@@ -1805,12 +1814,14 @@ UpdateCatalogDrawerList = function()
             end
         end
 
-        local spells = (BordoUI_Catalog and BordoUI_Catalog.Spells and BordoUI_Catalog.Spells[currentClass]) or {};
+        local cUpper = currentClass and string.upper(currentClass);
+        local spells = (BordoUI_Catalog and BordoUI_Catalog.Spells and (BordoUI_Catalog.Spells[cUpper] or BordoUI_Catalog.Spells[currentClass])) or {};
         for _, s in ipairs(spells) do
             local sNameLower = string.lower(s.name or "");
             local sk1 = CanonicalSpellKey(s.name or "");
             local sk2 = s.key and CanonicalSpellKey(s.key) or "";
-            local isAlreadySlotted = (slottedSpells[sNameLower] or (sk1 ~= "" and slottedSpells[sk1]) or (sk2 ~= "" and slottedSpells[sk2]));
+            local sk3 = s.key and string.lower(s.key) or "";
+            local isAlreadySlotted = (slottedSpells[sNameLower] or (sk1 ~= "" and slottedSpells[sk1]) or (sk2 ~= "" and slottedSpells[sk2]) or (sk3 ~= "" and slottedSpells[sk3]));
             if not isAlreadySlotted then
                 table.insert(currentFilteredItems, s);
             end

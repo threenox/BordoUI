@@ -189,6 +189,12 @@ local function RestoreHudPosition()
 		UI.xpBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
 	end
 end
+row:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" then MouselookStart() end
+end)
+row:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" then MouselookStop() end
+end)
 row:SetScript("OnDragStart", function()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 		row:StartMoving()

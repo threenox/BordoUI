@@ -205,7 +205,7 @@ toastFrame:SetClampedToScreen(true);
 toastFrame:SetMovable(true);
 toastFrame:EnableMouse(true);
 toastFrame:RegisterForDrag("LeftButton");
-toastFrame:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+toastFrame:RegisterForClicks("LeftButtonUp");
 toastFrame:Hide();
 
 toastFrame:SetScript("OnDragStart", function()
@@ -214,6 +214,26 @@ toastFrame:SetScript("OnDragStart", function()
     end
 end);
 
+toastFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" then
+        MouselookStart();
+    end
+end);
+toastFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" then
+        MouselookStop();
+    end
+end);
+toastFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" then
+        MouselookStart();
+    end
+end);
+toastFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" then
+        MouselookStop();
+    end
+end);
 toastFrame:SetScript("OnDragStop", function()
     toastFrame:StopMovingOrSizing();
     if ( BordoUIDB ) then
