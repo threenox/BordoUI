@@ -4,6 +4,13 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.13] - 2026-10-30
+
+### Fixed & Improved
+- **Fixed `SetUserPlaced` Error on Fixed Chat Box (`ThemeUI.lua`):**
+  - Removed redundant `SetUserPlaced` calls on `BordoUI_ChatBox` and `ChatFrame1..7`, resolving the client-side error: `Frame BordoUI_ChatBox is not movable or resizable`. In WoW 1.12, calling `SetUserPlaced` on a frame with `SetMovable(false)` throws a client exception. Frames created by addons default to non-user-placed automatically.
+---
+
 ## [2.8.12] - 2026-10-30
 
 ### Fixed & Improved

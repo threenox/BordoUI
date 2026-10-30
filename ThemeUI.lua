@@ -2010,7 +2010,6 @@ function AZSHelper:DockChatFrame(cf)
 	cf.isLocked = 1
 	cf.isDocked = 1
 	cf:RegisterForDrag()
-	cf:SetUserPlaced(1)
 	if cf:GetName() then
 		local resizeBtn = getglobal(cf:GetName() .. "ResizeButton")
 		if resizeBtn then
@@ -2179,7 +2178,6 @@ function AZSHelper:SkinChatWindow()
 	chatBox:SetMovable(false)
 	chatBox.StartMoving = function() end
 	chatBox.StopMovingOrSizing = function() end
-	chatBox:SetUserPlaced(0)
 	chatBox:EnableMouse(true)
 	chatBox:RegisterForDrag()
 	chatBox:SetBackdrop({
