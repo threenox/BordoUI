@@ -299,7 +299,7 @@ local function PositionBuildTooltip(ownerRow, centeredDown)
 	GameTooltip:ClearAllPoints()
 	if centeredDown then
 		local hud = getglobal("SurvivorUIRow")
-		local tally = (UI and UI.tallyFrame) or getglobal("AZSHelper_TallyFrame")
+		local tally = getglobal("AZSHelper_TallyFrame") or (AZSHelper and AZSHelper.tallyFrame) or (UI and UI.tallyFrame)
 		local anchorBottom = ownerRow and ownerRow:GetBottom() or 0
 		if tally and tally:IsShown() and tally:GetBottom() then
 			anchorBottom = tally:GetBottom()

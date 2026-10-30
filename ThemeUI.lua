@@ -1997,19 +1997,61 @@ end
 
 function AZSHelper:DockChatFrame(cf)
 	if not cf or not BordoUI_ChatBox then return end
+	if cf.ClearAllPoints and cf._bordoLockHooked then
+		cf._allowReposition = true
+	end
 	cf:SetParent(BordoUI_ChatBox)
+	cf:SetFrameStrata("LOW")
 	cf:ClearAllPoints()
 	cf:SetPoint("TOPLEFT", BordoUI_ChatBox, "TOPLEFT", 28, -24)
-	cf:SetWidth(BordoUI_ChatBox:GetWidth() - 34)
-	cf:SetHeight(BordoUI_ChatBox:GetHeight() - 30)
-	cf:SetFrameLevel(BordoUI_ChatBox:GetFrameLevel() + 2)
-	cf:SetClampedToScreen(false)
+	cf:SetPoint("BOTTOMRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", -6, 6)
+	cf:SetFrameLevel(BordoUI_ChatBox:GetFrameLevel() + 5)
+	cf:SetClampedToScreen(true)
 	cf:SetMovable(false)
 	cf.StartMoving = function() end
 	cf.StopMovingOrSizing = function() end
 	cf.isLocked = 1
 	cf.isDocked = 1
 	cf:RegisterForDrag()
+	cf:SetScript("OnDragStart", function() end)
+	cf:SetScript("OnDragStop", function() end)
+	cf:EnableMouse(true)
+	cf:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	cf:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
+		end
+	end)
+	cf:EnableMouseWheel(true)
+	cf:SetScript("OnMouseWheel", function()
+		if arg1 > 0 then
+			if IsShiftKeyDown() then this:ScrollToTop() else this:ScrollUp() end
+		else
+			if IsShiftKeyDown() then this:ScrollToBottom() else this:ScrollDown() end
+		end
+	end)
+
+	if not cf._bordoLockHooked then
+		cf._bordoLockHooked = true
+		local orig_SetPoint = cf.SetPoint
+		local orig_ClearAllPoints = cf.ClearAllPoints
+		cf._allowReposition = false
+		cf.ClearAllPoints = function(self)
+			if not self._allowReposition then return end
+			orig_ClearAllPoints(self)
+		end
+		cf.SetPoint = function(self, point, relTo, relPoint, x, y)
+			if not self._allowReposition then return end
+			orig_SetPoint(self, point, relTo, relPoint, x, y)
+		end
+	else
+		cf._allowReposition = false
+	end
+
 	if cf:GetName() then
 		local resizeBtn = getglobal(cf:GetName() .. "ResizeButton")
 		if resizeBtn then
@@ -2126,6 +2168,34 @@ function AZSHelper:SkinChatEditBox()
 	AZSHelper:AnchorChatEditBox()
 end
 
+function AZSHelper:SetupChatChannels()
+	if not ChatFrame1 then return end
+
+	local groups = {
+		"SAY", "EMOTE", "YELL", "WHISPER", "PARTY", "GUILD", "OFFICER",
+		"RAID", "RAID_WARNING", "BATTLEGROUND", "SYSTEM",
+		"MONSTER_SAY", "MONSTER_YELL", "MONSTER_EMOTE", "MONSTER_WHISPER",
+		"MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER", "CHANNEL", "IGNORED", "ERRORS",
+		"AFK", "DND", "SKILL", "LOOT", "MONEY"
+	}
+	for i = 1, table.getn(groups) do
+		ChatFrame_AddMessageGroup(ChatFrame1, groups[i])
+	end
+
+	for c = 1, 10 do
+		local id, name = GetChannelName(c)
+		if id and id > 0 and name then
+			ChatFrame_AddChannel(ChatFrame1, name)
+		end
+	end
+
+	SELECTED_CHAT_FRAME = ChatFrame1
+	DEFAULT_CHAT_FRAME = ChatFrame1
+	if ChatFrame1 and not (ChatFrame2 and ChatFrame2:IsShown()) then
+		ChatFrame1:Show()
+	end
+end
+
 function AZSHelper:DockAllChatFrames()
 	if not BordoUI_ChatBox then return end
 	for i = 1, 7 do
@@ -2139,9 +2209,14 @@ function AZSHelper:DockAllChatFrames()
 			tab.Show = function() end
 			tab:SetAlpha(0)
 			tab:EnableMouse(false)
+			tab:ClearAllPoints()
+			tab:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -2000, 2000)
 			tab:RegisterForDrag()
 			tab:SetScript("OnDragStart", function() end)
 			tab:SetScript("OnDragStop", function() end)
+			tab:SetScript("OnMouseDown", function() end)
+			tab:SetScript("OnMouseUp", function() end)
+			tab:SetScript("OnClick", function() end)
 			local tLeft = getglobal("ChatFrame"..i.."TabLeft")
 			local tMid = getglobal("ChatFrame"..i.."TabMiddle")
 			local tRight = getglobal("ChatFrame"..i.."TabRight")
@@ -2152,10 +2227,10 @@ function AZSHelper:DockAllChatFrames()
 			if tHigh then tHigh:Hide(); tHigh.Show = function() end end
 		end
 	end
-	if ChatFrame1 then
+	if ChatFrame1 and not (ChatFrame2 and ChatFrame2:IsShown()) then
 		ChatFrame1:Show()
 	end
-	if ChatFrame2 then
+	if ChatFrame2 and not ChatFrame2:IsShown() then
 		ChatFrame2:Hide()
 	end
 	AZSHelper:AnchorChatEditBox()
@@ -2191,19 +2266,13 @@ function AZSHelper:SkinChatWindow()
 	chatBox:SetBackdropColor(0.04, 0.04, 0.06, 0.75) -- Translucent modern dark box
 	chatBox:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
 
-	-- Header Bar with Title only - No tabs, no drag handles, purely styled title
+	-- Header Bar with Title and Custom Modern Tabs - No Blizzard tabs, no drag handles
 	local chatHeader = CreateFrame("Frame", nil, chatBox)
 	chatHeader:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 0, 0)
 	chatHeader:SetPoint("TOPRIGHT", chatBox, "TOPRIGHT", 0, 0)
 	chatHeader:SetHeight(22)
 	chatHeader:EnableMouse(true)
 	chatHeader:RegisterForDrag()
-
-	local chatTitle = chatHeader:CreateFontString("BordoUI_ChatTitle", "OVERLAY")
-	chatTitle:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
-	chatTitle:SetPoint("LEFT", chatHeader, "LEFT", 8, 0)
-	chatTitle:SetTextColor(0.85, 0.85, 0.88)
-	chatTitle:SetText("Chat")
 
 	chatHeader:SetScript("OnDragStart", function() end)
 	chatHeader:SetScript("OnDragStop", function() end)
@@ -2222,6 +2291,106 @@ function AZSHelper:SkinChatWindow()
 	chatBox:SetScript("OnMouseUp", function()
 		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
 	end)
+
+	-- Custom BordoUI Styled Tabs: [ Chat ] and [ Combat Log ]
+	local tabGeneral = CreateFrame("Button", "BordoUI_ChatTab_General", chatHeader)
+	tabGeneral:SetPoint("LEFT", chatHeader, "LEFT", 8, 0)
+	tabGeneral:SetWidth(50)
+	tabGeneral:SetHeight(16)
+	tabGeneral:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 8,
+		edgeSize = 8,
+		insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+	})
+	local gt = tabGeneral:CreateFontString(nil, "OVERLAY")
+	gt:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
+	gt:SetPoint("CENTER", tabGeneral, "CENTER", 0, 0)
+	gt:SetText("Chat")
+	tabGeneral.sText = gt
+	tabGeneral:EnableMouse(true)
+	tabGeneral:RegisterForDrag()
+	tabGeneral:SetScript("OnDragStart", function() end)
+	tabGeneral:SetScript("OnDragStop", function() end)
+
+	local tabCombat = CreateFrame("Button", "BordoUI_ChatTab_Combat", chatHeader)
+	tabCombat:SetPoint("LEFT", tabGeneral, "RIGHT", 4, 0)
+	tabCombat:SetWidth(72)
+	tabCombat:SetHeight(16)
+	tabCombat:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 8,
+		edgeSize = 8,
+		insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+	})
+	local ct = tabCombat:CreateFontString(nil, "OVERLAY")
+	ct:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
+	ct:SetPoint("CENTER", tabCombat, "CENTER", 0, 0)
+	ct:SetText("Combat Log")
+	tabCombat.sText = ct
+	tabCombat:EnableMouse(true)
+	tabCombat:RegisterForDrag()
+	tabCombat:SetScript("OnDragStart", function() end)
+	tabCombat:SetScript("OnDragStop", function() end)
+
+	local function UpdateChatTabVisuals()
+		local isCombat = (ChatFrame2 and ChatFrame2:IsShown()) or (SELECTED_CHAT_FRAME == ChatFrame2)
+		if tabGeneral and tabGeneral.sText then
+			if not isCombat then
+				tabGeneral:SetBackdropColor(0.12, 0.12, 0.18, 0.95)
+				tabGeneral:SetBackdropBorderColor(1.00, 0.82, 0.00, 0.95)
+				tabGeneral.sText:SetTextColor(1.00, 0.82, 0.00)
+			else
+				tabGeneral:SetBackdropColor(0.04, 0.04, 0.06, 0.60)
+				tabGeneral:SetBackdropBorderColor(0.18, 0.18, 0.22, 0.80)
+				tabGeneral.sText:SetTextColor(0.55, 0.55, 0.60)
+			end
+		end
+		if tabCombat and tabCombat.sText then
+			if isCombat then
+				tabCombat:SetBackdropColor(0.12, 0.12, 0.18, 0.95)
+				tabCombat:SetBackdropBorderColor(1.00, 0.82, 0.00, 0.95)
+				tabCombat.sText:SetTextColor(1.00, 0.82, 0.00)
+			else
+				tabCombat:SetBackdropColor(0.04, 0.04, 0.06, 0.60)
+				tabCombat:SetBackdropBorderColor(0.18, 0.18, 0.22, 0.80)
+				tabCombat.sText:SetTextColor(0.55, 0.55, 0.60)
+			end
+		end
+	end
+
+	tabGeneral:SetScript("OnClick", function()
+		if ChatFrame1 then ChatFrame1:Show() end
+		if ChatFrame2 then ChatFrame2:Hide() end
+		SELECTED_CHAT_FRAME = ChatFrame1
+		DEFAULT_CHAT_FRAME = ChatFrame1
+		UpdateChatTabVisuals()
+	end)
+	tabGeneral:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+	end)
+	tabGeneral:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+	end)
+
+	tabCombat:SetScript("OnClick", function()
+		if ChatFrame1 then ChatFrame1:Hide() end
+		if ChatFrame2 then ChatFrame2:Show() end
+		SELECTED_CHAT_FRAME = ChatFrame2
+		UpdateChatTabVisuals()
+	end)
+	tabCombat:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
+	end)
+	tabCombat:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
+	end)
+
+	UpdateChatTabVisuals()
 
 	-- Dock all chat frames cleanly inside chatBox
 	AZSHelper:DockAllChatFrames()
@@ -2259,62 +2428,14 @@ function AZSHelper:SkinChatWindow()
 		bottomBtn:SetPoint("TOP", downBtn or chatBox, downBtn and "BOTTOM" or "TOPLEFT", 0, downBtn and -3 or -64)
 	end
 
-	-- Flatten and Style Tabs
-	for i = 1, 7 do
-		local tab = getglobal("ChatFrame"..i.."Tab")
-		if tab then
-			local tLeft = getglobal("ChatFrame"..i.."TabLeft")
-			local tMid = getglobal("ChatFrame"..i.."TabMiddle")
-			local tRight = getglobal("ChatFrame"..i.."TabRight")
-			if tLeft then tLeft:SetAlpha(0) end
-			if tMid then tMid:SetAlpha(0) end
-			if tRight then tRight:SetAlpha(0) end
-			tab:SetParent(chatHeader)
-			tab:SetFrameLevel(chatHeader:GetFrameLevel() + 2)
-			tab:RegisterForDrag()
-			tab:SetScript("OnDragStart", function() end)
-			tab:SetScript("OnDragStop", function() end)
-		end
-		local cf = getglobal("ChatFrame"..i)
-		if cf then
-			cf:SetMovable(false)
-			cf.StartMoving = function() end
-			cf.StopMovingOrSizing = function() end
-			cf.isLocked = 1
-			cf.isDocked = 1
-			cf:EnableMouse(true)
-			cf:RegisterForDrag()
-			cf:SetScript("OnDragStart", function() end)
-			cf:SetScript("OnDragStop", function() end)
-			cf:SetScript("OnMouseDown", function()
-				if arg1 == "RightButton" and MouselookStart then
-					MouselookStart()
-				end
-			end)
-			cf:SetScript("OnMouseUp", function()
-				if arg1 == "RightButton" and MouselookStop then
-					MouselookStop()
-				end
-			end)
-			cf:EnableMouseWheel(true)
-			cf:SetScript("OnMouseWheel", function()
-				if arg1 > 0 then
-					if IsShiftKeyDown() then this:ScrollToTop() else this:ScrollUp() end
-				else
-					if IsShiftKeyDown() then this:ScrollToBottom() else this:ScrollDown() end
-				end
-			end)
-		end
-	end
-	if ChatFrame1Tab then
-		ChatFrame1Tab:ClearAllPoints()
-		ChatFrame1Tab:SetPoint("LEFT", chatTitle, "RIGHT", 8, 0)
-	end
-
 	-- Neutralize Blizzard FCF undocking and frame dragging functions permanently
 	if type(FCF_UnDockFrame) == "function" and not AZSHelper._FCF_UnDockHooked then
 		AZSHelper._FCF_UnDockHooked = true
 		FCF_UnDockFrame = function(frame) end
+	end
+	if type(FCF_DockFrame) == "function" and not AZSHelper._FCF_DockFrameHooked then
+		AZSHelper._FCF_DockFrameHooked = true
+		FCF_DockFrame = function(frame, id) end
 	end
 	if type(FCF_Tab_OnDragStart) == "function" and not AZSHelper._FCF_TabDragHooked then
 		AZSHelper._FCF_TabDragHooked = true
@@ -2323,6 +2444,10 @@ function AZSHelper:SkinChatWindow()
 	if type(FCF_OnDragStart) == "function" and not AZSHelper._FCF_DragHooked then
 		AZSHelper._FCF_DragHooked = true
 		FCF_OnDragStart = function(button) end
+	end
+	if type(FCF_Tab_OnMouseDown) == "function" and not AZSHelper._FCF_TabMouseHooked then
+		AZSHelper._FCF_TabMouseHooked = true
+		FCF_Tab_OnMouseDown = function(button) end
 	end
 	if type(FCF_OnMouseDown) == "function" and not AZSHelper._FCF_MouseDownHooked then
 		AZSHelper._FCF_MouseDownHooked = true
@@ -2364,12 +2489,29 @@ function AZSHelper:SkinChatWindow()
 	end
 
 	-- Hook ChatFrame_OpenChat so pressing Enter or / keeps ChatFrameEditBox flush under BordoUI_ChatBox
+	-- and ensures messages are routed into ChatFrame1
 	if type(ChatFrame_OpenChat) == "function" and not AZSHelper._OpenChatHooked then
 		AZSHelper._OpenChatHooked = true
 		local orig_ChatFrame_OpenChat = ChatFrame_OpenChat
 		ChatFrame_OpenChat = function(text, chatFrame)
+			if not chatFrame then
+				chatFrame = ChatFrame1
+			end
+			SELECTED_CHAT_FRAME = chatFrame
 			if orig_ChatFrame_OpenChat then
 				orig_ChatFrame_OpenChat(text, chatFrame)
+			end
+			local editBox = getglobal("ChatFrameEditBox")
+			if editBox then
+				if not editBox.chatType or editBox.chatType == "" then
+					editBox.chatType = "SAY"
+				end
+				if editBox.chatType == "CHANNEL" then
+					local chId = GetChannelName(editBox.channelTarget or 1)
+					if not chId or chId == 0 then
+						editBox.chatType = "SAY"
+					end
+				end
 			end
 			if AZSHelper and AZSHelper.AnchorChatEditBox then
 				AZSHelper:AnchorChatEditBox()
@@ -2465,6 +2607,8 @@ eventHandler:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
 eventHandler:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
 eventHandler:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
 eventHandler:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
+eventHandler:RegisterEvent("UPDATE_CHAT_WINDOWS")
+eventHandler:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
 eventHandler:SetScript("OnEvent", function()
 	if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
 		LayoutBar()
@@ -2475,6 +2619,7 @@ eventHandler:SetScript("OnEvent", function()
 		AZSHelper:ApplySquareMinimapStyle()
 		AZSHelper:SkinChatWindow()
 		if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
+		if AZSHelper and AZSHelper.SetupChatChannels then AZSHelper:SetupChatChannels() end
 		UpdatePortrait(player)
 		UpdateUnitFrame(player)
 		RestoreHudPosition()
@@ -2523,6 +2668,13 @@ eventHandler:SetScript("OnEvent", function()
 			UpdatePortrait(player)
 		elseif arg1 == "target" then
 			UpdatePortrait(target)
+		end
+	elseif event == "UPDATE_CHAT_WINDOWS" or event == "CHAT_MSG_CHANNEL_NOTICE" then
+		if AZSHelper and AZSHelper.SetupChatChannels then
+			AZSHelper:SetupChatChannels()
+		end
+		if AZSHelper and AZSHelper.DockAllChatFrames then
+			AZSHelper:DockAllChatFrames()
 		end
 	end
 end)

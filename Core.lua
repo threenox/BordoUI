@@ -273,8 +273,9 @@ eventFrame:SetScript("OnEvent", function()
             if ( BordoUI.UpdateLockState ) then
                 BordoUI:UpdateLockState();
             end
-            if ( BordoUI_ChatBox and BordoUIDB and BordoUIDB.chatPos ) then
-                BordoUI:RestorePosition(BordoUI_ChatBox, BordoUIDB.chatPos);
+            if ( BordoUI_ChatBox ) then
+                BordoUI_ChatBox:ClearAllPoints();
+                BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
                 if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
             end
         end

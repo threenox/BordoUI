@@ -4,6 +4,23 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.14] - 2026-10-30
+
+### Fixed & Improved
+- **Chat Frame Immovability & Anchor Locking (`ThemeUI.lua`):**
+  - Hooked `ChatFrame1..7:SetPoint` and `ClearAllPoints` with an internal reposition lock so neither Blizzard's `FCF_RestorePositionAndDimensions` nor engine saves from `layout-cache.txt` can ever pull or restore the chat text outside `BordoUI_ChatBox`.
+  - Permanently docked `ChatFrame1` to `TOPLEFT, 28, -24` and `BOTTOMRIGHT, -6, 6` inside `BordoUI_ChatBox`, fixed at `BOTTOMLEFT, 14, 26`.
+  - Neutralized all mouse dragging on chat frames: `StartMoving`, `StopMovingOrSizing`, `RegisterForDrag()`, `OnDragStart`, `FCF_UnDockFrame`, `FCF_DockFrame`, and `FCF_Tab_OnDragStart`. The chat text can never be dragged out with left- or right-click.
+- **Custom Modern Tabs & Message Channel Routing (`ThemeUI.lua`):**
+  - Integrated modern BordoUI styled dark tabs in the chat header: `[ Chat ]` (General/Party/Whispers/All channels) and `[ Combat Log ]` with gold active indicator.
+  - Pushed all legacy Blizzard tabs (`ChatFrame1Tab..7Tab`) 2000px offscreen and disabled their rendering, eliminating ugly blue stock tabs and messy overlapping fonts.
+  - Fixed typed message display: ensured `SELECTED_CHAT_FRAME` and `DEFAULT_CHAT_FRAME` target `ChatFrame1`, and registered all communication channels (`SAY`, `EMOTE`, `YELL`, `WHISPER`, `PARTY`, `GUILD`, `OFFICER`, `RAID`, `CHANNEL 1..10`, `SYSTEM`). When typing text and pressing Enter, messages are routed directly to the active channel without getting lost or sent to hidden frames.
+- **Universal Instant Tooltip for All Classes & Spells (`BuildList.lua`, `AbilityTooltip.lua`):**
+  - Verified and confirmed downward anchoring under the Kill & Gold tally frame (`AZSHelper_TallyFrame`).
+  - Instant hover caching applies universally across all 12 action bar slots, for all character classes (Priest, Mage, Warrior, Rogue, Hunter, Paladin, Warlock, Druid, Shaman) and all abilities.
+
+---
+
 ## [2.8.13] - 2026-10-30
 
 ### Fixed & Improved
