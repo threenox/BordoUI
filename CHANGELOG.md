@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.10] - 2026-10-30
+
+### Fixed & Improved
+- **Action Bar Skill Tooltip Hover Lag & Collision Loop Fixed (`BuildList.lua`, `AbilityTooltip.lua`, `ThemeUI.lua`):**
+  - **Root Cause Resolved**: Previously, action button spell tooltips were anchored downwards (`anchorBottom - 8`). Because the action bar sits near the screen bottom, the tooltip overflowed the viewport and `SetClampedToScreen` forced it upwards directly over the hovered button and mouse cursor. Since `GameTooltip` defaulted to `enableMouse="true"`, cursor focus was instantly stolen by the tooltip, firing `ActionButton:OnLeave` and hiding the tooltip. When hidden, the button received `OnEnter` again, causing rapid flicker and requiring 3-4 hover attempts to view the tooltip.
+  - **Top-Anchoring Layout**: Repositioned centered spell tooltips to anchor cleanly **above** the action bar (`"BOTTOM", UIParent, "BOTTOM", 0, anchorTop + 8`), allowing tooltips to expand upwards into open space without ever occluding the action buttons, cooldown counters, or cursor.
+  - **Click-Through Tooltips & Overlays**: Explicitly set `EnableMouse(false)` on `GameTooltip`, `ItemRefTooltip`, and all cooldown timer models (`button.cooldown`) and countdown frames (`button.survivorCounter`), preventing any overlay from ever intercepting cursor hover or breaking mouse focus.
+  - **Instant Fallback to `AZS_SPELLS`**: If a native action slot returns 0 lines (e.g. for Azeroth Survivors engine spells or slot 12 racial ability before native slot binding), `BuildList.lua` immediately populates the tooltip from `AZS_SPELLS` on the first frame, guaranteeing 100% instant tooltip response on the very first hover.
+---
+
 ## [2.3.6] - 2026-10-29
 
 ### Fixed & Improved

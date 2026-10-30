@@ -283,6 +283,7 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 		cooldown:SetAllPoints(parent)
 		cooldown:SetFrameStrata(parent:GetFrameStrata())
 		cooldown:SetFrameLevel(parent:GetFrameLevel() + 1)
+		if cooldown.EnableMouse then cooldown:EnableMouse(false) end
 
 		local counter = parent.survivorCounter
 		if not counter then
@@ -291,6 +292,7 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 			counter:SetAllPoints(parent)
 			counter:SetFrameStrata(parent:GetFrameStrata())
 			counter:SetFrameLevel(parent:GetFrameLevel() + 2)
+			if counter.EnableMouse then counter:EnableMouse(false) end
 			counter.dim = counter:CreateTexture(nil, "BACKGROUND")
 			counter.dim:SetTexture(FLAT)
 			counter.dim:SetVertexColor(0, 0, 0, 0.45)
@@ -304,6 +306,7 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 			counter:SetAllPoints(parent)
 			counter:SetFrameStrata(parent:GetFrameStrata())
 			counter:SetFrameLevel(parent:GetFrameLevel() + 2)
+			if counter.EnableMouse then counter:EnableMouse(false) end
 		end
 
 		if start and start > 0 and duration and duration > 0.5 and enable and enable > 0 then
@@ -355,6 +358,7 @@ local function StyleButton(button)
 		cooldown:SetAllPoints(button)
 		cooldown:SetFrameStrata(button:GetFrameStrata())
 		cooldown:SetFrameLevel(button:GetFrameLevel() + 1)
+		if cooldown.EnableMouse then cooldown:EnableMouse(false) end
 	end
 	button.cooldown = cooldown
 
@@ -365,6 +369,7 @@ local function StyleButton(button)
 		counter:SetAllPoints(button)
 		counter:SetFrameStrata(button:GetFrameStrata())
 		counter:SetFrameLevel(button:GetFrameLevel() + 2)
+		if counter.EnableMouse then counter:EnableMouse(false) end
 	end
 
 	-- Permanently lock action buttons against dragging/unslotting in Azeroth Survivors

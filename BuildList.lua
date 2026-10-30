@@ -299,11 +299,15 @@ local function PositionBuildTooltip(ownerRow, centeredDown)
 	GameTooltip:ClearAllPoints()
 	if centeredDown then
 		local hud = getglobal("SurvivorUIRow")
-		local anchorBottom = ownerRow and ownerRow:GetBottom() or 0
-		if hud and hud:IsShown() then anchorBottom = hud:GetBottom() or anchorBottom end
-		-- Anchor below the whole spell row: content height can change after the
-		-- first frame, so it must not decide whether the tooltip covers the bar.
-		GameTooltip:SetPoint("TOP", UIParent, "BOTTOM", 0, anchorBottom - 8)
+		local anchorTop = ownerRow and ownerRow:GetTop() or 0
+		if hud and hud:IsShown() then
+			local hTop = hud:GetTop()
+			if hTop and hTop > anchorTop then anchorTop = hTop end
+		end
+		if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
+		-- Anchor ABOVE the action bar: tooltip expands UPWARDS into open space,
+		-- perfectly readable and never occluding the bar or colliding with the mouse cursor!
+		GameTooltip:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, anchorTop + 8)
 		if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
 		return
 	end
@@ -360,10 +364,39 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 					local action = ActionButton_GetPagedID and ActionButton_GetPagedID(actionButton) or actionButton:GetID()
 					if not (action and GameTooltip.SetAction) then return end
 					GameTooltip.bordoBuildTooltipActive = true
+					if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
 					GameTooltip:SetOwner(actionButton, "ANCHOR_NONE")
 					local ok = pcall(GameTooltip.SetAction, GameTooltip, action)
-					if not ok then return end
+					local lines = GameTooltip:NumLines()
+					if (not ok) or lines < 1 then
+						-- Fallback: resolve from AZS_SPELLS if native action slot has no spell
+						local total = AZS_SPELLS and table.getn(AZS_SPELLS) or 0
+						local entry = nil
+						if total > 0 then
+							if buttonIndex == 12 then
+								entry = AZS_SPELLS[total]
+							elseif buttonIndex < total and buttonIndex <= 6 then
+								entry = AZS_SPELLS[buttonIndex]
+							end
+						end
+						if entry then
+							GameTooltip:ClearLines()
+							local spellName = entry.name or entry[1] or ""
+							local spellRank = entry.rank or entry[3]
+							if spellRank and spellRank ~= "" then
+								GameTooltip:AddDoubleLine(spellName, "Rank "..tostring(spellRank), 1, 1, 1, 0.6, 0.6, 0.6)
+							else
+								GameTooltip:AddLine(spellName, 1, 1, 1)
+							end
+							if entry.desc or entry.description then
+								GameTooltip:AddLine(entry.desc or entry.description, 0.8, 0.8, 0.8, 1)
+							end
+						else
+							return
+						end
+					end
 					GameTooltip.bordoBuildTooltipActive = true
+					if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
 					GameTooltip:Show()
 					if SurvivorUI_HideDuplicateSpellTooltips then SurvivorUI_HideDuplicateSpellTooltips() end
 					PositionBuildTooltip(actionButton, true)

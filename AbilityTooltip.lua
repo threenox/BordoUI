@@ -103,6 +103,7 @@ end
 
 local function StyleTooltip(tip)
 	if not tip then return end
+	if tip.EnableMouse then tip:EnableMouse(false) end
 	tip:SetScale(0.80)
 	-- A predictable width gives long descriptions room to wrap instead of
 	-- being clipped by the tooltip's automatic single-line sizing.
@@ -641,6 +642,7 @@ watcher:SetScript("OnUpdate", function()
 	if not GameTooltip:IsVisible() then
 		return
 	end
+	if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
 	-- Each switched off as a module: the game's own layout stays.
 	local abilities = not SurvivorUI_Feature or SurvivorUI_Feature("abilityTooltip")
 	local items = not SurvivorUI_Feature or SurvivorUI_Feature("itemTooltip")
@@ -751,6 +753,7 @@ end)
 
 local stockGameTooltipShow = GameTooltip:GetScript("OnShow")
 GameTooltip:SetScript("OnShow", function()
+	if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
 	if stockGameTooltipShow then
 		stockGameTooltipShow()
 	end
