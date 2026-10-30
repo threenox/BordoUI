@@ -4,6 +4,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.11] - 2026-10-30
+
+### Fixed & Improved
+- **Permanently Lock Chat Text & Frames Inside Chat Box (`ThemeUI.lua`):**
+  - **Root Cause Resolved**: Left-clicking or dragging on `ChatFrame1` or `ChatFrame1Tab` triggered Blizzard's internal `FCF_OnMouseDown` / `FCF_OnDragStart` and `FCF_Tab_OnDragStart`, undocking the chat message frame and dragging the raw text floating out of `BordoUI_ChatBox` across the game world.
+  - **Permanent Chat Frame Lock**: Disabled `cf:SetMovable(false)`, overridden `cf.StartMoving = function() end` and `cf.StopMovingOrSizing = function() end`, and set `cf.isLocked = 1` and `cf.isDocked = 1` across all `ChatFrame1..7`.
+  - **Neutralized Undock & Drag Triggers**: Neutralized Blizzard's `FCF_UnDockFrame`, `FCF_Tab_OnDragStart`, `FCF_OnDragStart`, and `FCF_OnMouseDown` functions, and unregistered drag from tabs and message frames. The chat text can never be moved, detached, or dragged out of the window.
+  - **Full Camera Mouselook Over Chat**: Added `MouselookStart()` and `MouselookStop()` on Right-Click over `ChatFrame1..7`, allowing players to seamlessly rotate the camera when the mouse is anywhere over the chat area.
+  - **Automated Re-Docking**: When loading or reloading, any previously detached chat frame is immediately forced back into its docked position inside `BordoUI_ChatBox` (`TOPLEFT, 28, -24`).
+---
+
 ## [2.8.10] - 2026-10-30
 
 ### Fixed & Improved

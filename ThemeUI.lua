@@ -2005,10 +2005,21 @@ function AZSHelper:DockChatFrame(cf)
 	cf:SetFrameLevel(BordoUI_ChatBox:GetFrameLevel() + 2)
 	cf:SetClampedToScreen(false)
 	cf:SetMovable(false)
+	cf.StartMoving = function() end
+	cf.StopMovingOrSizing = function() end
+	cf.isLocked = 1
+	cf.isDocked = 1
+	cf:RegisterForDrag()
 	cf:SetUserPlaced(1)
 	if cf:GetName() then
 		local resizeBtn = getglobal(cf:GetName() .. "ResizeButton")
-		if resizeBtn then resizeBtn:Hide() end
+		if resizeBtn then
+			resizeBtn:Hide()
+			resizeBtn.Show = function() end
+			resizeBtn:EnableMouse(false)
+			resizeBtn:SetScript("OnMouseDown", nil)
+			resizeBtn:SetScript("OnMouseUp", nil)
+		end
 	end
 end
 
@@ -2264,16 +2275,31 @@ function AZSHelper:SkinChatWindow()
 			if tRight then tRight:SetAlpha(0) end
 			tab:SetParent(chatHeader)
 			tab:SetFrameLevel(chatHeader:GetFrameLevel() + 2)
-			tab:RegisterForDrag("LeftButton")
-			tab:SetScript("OnDragStart", StartChatDrag)
-			tab:SetScript("OnDragStop", StopChatDrag)
+			tab:RegisterForDrag()
+			tab:SetScript("OnDragStart", function() end)
+			tab:SetScript("OnDragStop", function() end)
 		end
 		local cf = getglobal("ChatFrame"..i)
 		if cf then
+			cf:SetMovable(false)
+			cf.StartMoving = function() end
+			cf.StopMovingOrSizing = function() end
+			cf.isLocked = 1
+			cf.isDocked = 1
 			cf:EnableMouse(true)
-			cf:RegisterForDrag("LeftButton")
-			cf:SetScript("OnDragStart", StartChatDrag)
-			cf:SetScript("OnDragStop", StopChatDrag)
+			cf:RegisterForDrag()
+			cf:SetScript("OnDragStart", function() end)
+			cf:SetScript("OnDragStop", function() end)
+			cf:SetScript("OnMouseDown", function()
+				if arg1 == "RightButton" and MouselookStart then
+					MouselookStart()
+				end
+			end)
+			cf:SetScript("OnMouseUp", function()
+				if arg1 == "RightButton" and MouselookStop then
+					MouselookStop()
+				end
+			end)
 			cf:EnableMouseWheel(true)
 			cf:SetScript("OnMouseWheel", function()
 				if arg1 > 0 then
@@ -2287,6 +2313,24 @@ function AZSHelper:SkinChatWindow()
 	if ChatFrame1Tab then
 		ChatFrame1Tab:ClearAllPoints()
 		ChatFrame1Tab:SetPoint("LEFT", chatTitle, "RIGHT", 8, 0)
+	end
+
+	-- Neutralize Blizzard FCF undocking and frame dragging functions permanently
+	if type(FCF_UnDockFrame) == "function" and not AZSHelper._FCF_UnDockHooked then
+		AZSHelper._FCF_UnDockHooked = true
+		FCF_UnDockFrame = function(frame) end
+	end
+	if type(FCF_Tab_OnDragStart) == "function" and not AZSHelper._FCF_TabDragHooked then
+		AZSHelper._FCF_TabDragHooked = true
+		FCF_Tab_OnDragStart = function(button) end
+	end
+	if type(FCF_OnDragStart) == "function" and not AZSHelper._FCF_DragHooked then
+		AZSHelper._FCF_DragHooked = true
+		FCF_OnDragStart = function(button) end
+	end
+	if type(FCF_OnMouseDown) == "function" and not AZSHelper._FCF_MouseDownHooked then
+		AZSHelper._FCF_MouseDownHooked = true
+		FCF_OnMouseDown = function(button) end
 	end
 
 	-- Hook Blizzard FCF functions to maintain docking and prevent text stretching
