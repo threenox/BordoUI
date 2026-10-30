@@ -100,22 +100,12 @@ procFrame:SetScript("OnDragStart", function()
     end
 end);
 procFrame:SetScript("OnMouseDown", function()
-    if arg1 == "RightButton" then
+    if arg1 == "RightButton" and MouselookStart then
         MouselookStart();
     end
 end);
 procFrame:SetScript("OnMouseUp", function()
-    if arg1 == "RightButton" then
-        MouselookStop();
-    end
-end);
-procFrame:SetScript("OnMouseDown", function()
-    if arg1 == "RightButton" then
-        MouselookStart();
-    end
-end);
-procFrame:SetScript("OnMouseUp", function()
-    if arg1 == "RightButton" then
+    if arg1 == "RightButton" and MouselookStop then
         MouselookStop();
     end
 end);
