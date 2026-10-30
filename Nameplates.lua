@@ -219,6 +219,7 @@ local function SetupNameplateElements(frame)
             insets   = { left = 1, right = 1, top = 1, bottom = 1 }
         });
         b:SetBackdropBorderColor(0.15, 0.15, 0.18, 0.95);
+        if ( b.EnableMouse ) then b:EnableMouse(false); end
         healthBar.azsBorder = b;
     end
     
@@ -235,9 +236,50 @@ local function SetupNameplateElements(frame)
     frame.azsNameText = nameText;
     frame.azsLevelText = levelText;
     frame.azsElementsReady = true;
+
+    -- Hook right-click camera steering (Mouselook) on the nameplate frame and all children
+    if ( not frame.azsMouseHooked ) then
+        frame.azsMouseHooked = true;
+        local origDown = frame:GetScript("OnMouseDown");
+        frame:SetScript("OnMouseDown", function()
+            if origDown then origDown(); end
+            if arg1 == "RightButton" and MouselookStart then
+                MouselookStart();
+            end
+        end);
+        local origUp = frame:GetScript("OnMouseUp");
+        frame:SetScript("OnMouseUp", function()
+            if origUp then origUp(); end
+            if arg1 == "RightButton" and MouselookStop then
+                MouselookStop();
+            end
+        end);
+    end
+
+    local kids = { frame:GetChildren() };
+    for i = 1, table.getn(kids) do
+        local c = kids[i];
+        if ( c and not c.azsMouseHooked ) then
+            c.azsMouseHooked = true;
+            local origCdown = c:GetScript("OnMouseDown");
+            c:SetScript("OnMouseDown", function()
+                if origCdown then origCdown(); end
+                if arg1 == "RightButton" and MouselookStart then
+                    MouselookStart();
+                end
+            end);
+            local origCup = c:GetScript("OnMouseUp");
+            c:SetScript("OnMouseUp", function()
+                if origCup then origCup(); end
+                if arg1 == "RightButton" and MouselookStop then
+                    MouselookStop();
+                end
+            end);
+        end
+    end
 end
 
--- Completely hide a filtered-out nameplate in WoW 1.12.1 (alpha 0, size 0.001)
+-- Completely hide a filtered-out nameplate in WoW 1.12.1 (alpha 0, size 0.001, click-through)
 local function HideNameplateFrame(frame)
     frame.isFilteredOut = true;
     local healthBar = frame.azsHealthBar;
@@ -257,6 +299,10 @@ local function HideNameplateFrame(frame)
     if ( nameText ) then nameText:Hide(); end
     if ( levelText ) then levelText:Hide(); end
     frame:SetAlpha(0);
+    frame:SetWidth(0.001);
+    frame:SetHeight(0.001);
+    if ( frame.EnableMouse ) then frame:EnableMouse(false); end
+    if ( healthBar.EnableMouse ) then healthBar:EnableMouse(false); end
 end
 
 -- Restore a previously filtered-out nameplate to full visibility
@@ -282,6 +328,8 @@ local function RestoreNameplateFrame(frame)
     if ( nameText ) then nameText:Show(); end
     if ( levelText ) then levelText:Show(); end
     frame:SetAlpha(1);
+    if ( frame.EnableMouse ) then frame:EnableMouse(true); end
+    if ( healthBar.EnableMouse ) then healthBar:EnableMouse(true); end
 end
 
 -- Dynamic Styling on each Nameplate according to Unit Classification & Filters
@@ -493,6 +541,8 @@ local function StyleNameplate(frame)
     if ( kind == "final" ) then
         healthBar:SetWidth(175);
         healthBar:SetHeight(20);
+        frame:SetWidth(175);
+        frame:SetHeight(20);
         frame:SetFrameLevel(100);
         
         healthBar:SetStatusBarColor(0.85, 0.15, 0.85, 1.0); -- Royal Magenta
@@ -521,6 +571,8 @@ local function StyleNameplate(frame)
     elseif ( kind == "boss" ) then
         healthBar:SetWidth(160);
         healthBar:SetHeight(18);
+        frame:SetWidth(160);
+        frame:SetHeight(18);
         frame:SetFrameLevel(90);
         
         healthBar:SetStatusBarColor(0.95, 0.15, 0.15, 1.0); -- Fiery Crimson
@@ -549,6 +601,8 @@ local function StyleNameplate(frame)
     elseif ( kind == "guardian" ) then
         healthBar:SetWidth(145);
         healthBar:SetHeight(16);
+        frame:SetWidth(145);
+        frame:SetHeight(16);
         frame:SetFrameLevel(80);
         
         healthBar:SetStatusBarColor(0.95, 0.60, 0.10, 1.0); -- Radiant Amber
@@ -577,6 +631,8 @@ local function StyleNameplate(frame)
     elseif ( kind == "elite" ) then
         healthBar:SetWidth(115);
         healthBar:SetHeight(11);
+        frame:SetWidth(115);
+        frame:SetHeight(11);
         frame:SetFrameLevel(30);
         
         healthBar:SetStatusBarColor(0.85, 0.25, 0.25, 1.0);
@@ -603,6 +659,8 @@ local function StyleNameplate(frame)
     else
         healthBar:SetWidth(100);
         healthBar:SetHeight(10);
+        frame:SetWidth(100);
+        frame:SetHeight(10);
         frame:SetFrameLevel(10);
         
         healthBar:SetStatusBarColor(0.75, 0.20, 0.20, 1.0); -- Clean dark-red

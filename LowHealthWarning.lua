@@ -23,6 +23,7 @@ local function InitLowHealthFrame()
     lowHealthFrame:SetAllPoints(UIParent);
     lowHealthFrame:SetFrameStrata("BACKGROUND");
     lowHealthFrame:SetFrameLevel(1);
+    lowHealthFrame:EnableMouse(false);
     lowHealthFrame:Hide();
     
     -- 4 Edge Vignette Gradients (Dark Crimson)
