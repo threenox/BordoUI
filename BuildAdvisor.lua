@@ -1,4 +1,4 @@
-﻿-- BordoUI: Meta Build Advisor & Card Choice Highlighter
+-- BordoUI: Meta Build Advisor & Card Choice Highlighter
 -- Provides an in-game meta build guide for all 9 classes and animated card glowing during level-up choices.
 
 BordoUI = BordoUI or {};
@@ -2692,19 +2692,34 @@ for i = 1, 5 do
     slot.sTitle = sTitle;
 
     slot:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+    slot:SetScript("OnMouseDown", function()
+        if arg1 == "RightButton" then
+            this.downX, this.downY = GetCursorPosition();
+            if MouselookStart then MouselookStart(); end
+        end
+    end);
+    slot:SetScript("OnMouseUp", function()
+        if arg1 == "RightButton" and MouselookStop then
+            MouselookStop();
+        end
+    end);
     slot:SetScript("OnClick", function()
         if arg1 == "RightButton" and this.spellData then
-            local spKey = this.spellData.key or string.lower(string.gsub(this.spellData.name, "[%s%p_]", ""));
-            BordoUI_BanishedSpells = BordoUI_BanishedSpells or {};
-            if BordoUI_BanishedSpells[spKey] then
-                BordoUI_BanishedSpells[spKey] = nil;
-                DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Unbanished |cff00ff00" .. this.spellData.name .. "|r from Choice HUD.");
-            else
-                BordoUI_BanishedSpells[spKey] = true;
-                DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r |cffff4444BANISHED|r |cffffd200" .. this.spellData.name .. "|r from Choice HUD (Right-click again to unbanish).");
+            local cx, cy = GetCursorPosition();
+            local moved = (this.downX and this.downY) and (math.abs(cx - this.downX) > 4 or math.abs(cy - this.downY) > 4);
+            if not moved then
+                local spKey = this.spellData.key or string.lower(string.gsub(this.spellData.name, "[%s%p_]", ""));
+                BordoUI_BanishedSpells = BordoUI_BanishedSpells or {};
+                if BordoUI_BanishedSpells[spKey] then
+                    BordoUI_BanishedSpells[spKey] = nil;
+                    DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Unbanished |cff00ff00" .. this.spellData.name .. "|r from Choice HUD.");
+                else
+                    BordoUI_BanishedSpells[spKey] = true;
+                    DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r |cffff4444BANISHED|r |cffffd200" .. this.spellData.name .. "|r from Choice HUD (Right-click again to unbanish).");
+                end
+                PlaySound("igMainMenuOptionCheckBoxOn");
+                RefreshChoiceHUD();
             end
-            PlaySound("igMainMenuOptionCheckBoxOn");
-            RefreshChoiceHUD();
         end
     end);
 
@@ -2808,8 +2823,21 @@ for j = 1, 5 do
         GameTooltip:Hide();
     end);
 
+    jSlot:RegisterForClicks("LeftButtonUp");
     jSlot:SetScript("OnClick", function()
-        BordoUI_ToggleBuildAdvisor();
+        if arg1 == "LeftButton" then
+            BordoUI_ToggleBuildAdvisor();
+        end
+    end);
+    jSlot:SetScript("OnMouseDown", function()
+        if arg1 == "RightButton" and MouselookStart then
+            MouselookStart();
+        end
+    end);
+    jSlot:SetScript("OnMouseUp", function()
+        if arg1 == "RightButton" and MouselookStop then
+            MouselookStop();
+        end
     end);
 
     hudJewelrySlots[j] = jSlot;

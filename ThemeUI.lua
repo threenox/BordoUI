@@ -810,12 +810,20 @@ local function UnitFrame(unit, name, side, dropdown)
 	frame.level:SetTextColor(1, 0.25, 0.35)
 	frame.value = Text(frame.texts, 10, "RIGHT", -5, 0)
 	frame.value:SetTextColor(1, 1, 1)
-	frame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	frame:RegisterForClicks("LeftButtonUp")
 	frame:SetScript("OnClick", function()
-		if arg1 == "RightButton" and dropdown and getglobal(dropdown) then
-			ToggleDropDownMenu(1, nil, getglobal(dropdown), "cursor")
-		else
+		if arg1 == "LeftButton" then
 			TargetUnit(this.unit)
+		end
+	end)
+	frame:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	frame:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
 		end
 	end)
 	frame:RegisterForDrag("LeftButton")
@@ -951,8 +959,18 @@ for index = 1, AURA_MAX do
 	aura.count = Text(aura, 9, "BOTTOMRIGHT", -1, 1)
 	aura:RegisterForClicks("RightButtonUp")
 	aura:SetScript("OnClick", function()
-		if this.helpful then
+		if this.helpful and IsAltKeyDown() then
 			CancelPlayerBuff(this.buffIndex)
+		end
+	end)
+	aura:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	aura:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
 		end
 	end)
 	aura:SetScript("OnEnter", function()
@@ -1050,6 +1068,16 @@ UI.xpBar:SetScript("OnEnter", function()
 end)
 UI.xpBar:SetScript("OnLeave", function()
 	UI.xpText:SetTextColor(1, 1, 1, 0.85)
+end)
+UI.xpBar:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+UI.xpBar:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
 end)
 -- B) CENTERED KILLS & GOLD TALLY FRAME (Positioned right under the action bar)
 UI.tallyFrame = CreateFrame("Frame", "AZSHelper_TallyFrame", UIParent)
@@ -2062,6 +2090,22 @@ function AZSHelper:SkinChatEditBox()
 				AZSHelper:AnchorChatEditBox()
 			end
 		end)
+		local orig_OnTextChanged = editBox:GetScript("OnTextChanged")
+		editBox:SetScript("OnTextChanged", function()
+			if orig_OnTextChanged then orig_OnTextChanged() end
+			if AZSHelper and AZSHelper.UpdateEditBoxInsets then
+				AZSHelper:UpdateEditBoxInsets()
+			end
+		end)
+		if ChatEdit_UpdateHeader then
+			local orig_ChatEdit_UpdateHeader = ChatEdit_UpdateHeader
+			ChatEdit_UpdateHeader = function(eb)
+				orig_ChatEdit_UpdateHeader(eb)
+				if AZSHelper and AZSHelper.UpdateEditBoxInsets then
+					AZSHelper:UpdateEditBoxInsets()
+				end
+			end
+		end
 	end
 
 	AZSHelper:AnchorChatEditBox()

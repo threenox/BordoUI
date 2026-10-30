@@ -243,6 +243,16 @@ holder:SetScript("OnDragStop", function()
 	holder:StopMovingOrSizing()
 	SaveFrames()
 end)
+holder:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+holder:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
 local rows = {}
 
 local function Tip(row)
@@ -349,6 +359,16 @@ local function Row(index)
 	row:SetScript("OnDragStop", function()
 		holder:StopMovingOrSizing()
 		SaveFrames()
+	end)
+	row:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	row:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
+		end
 	end)
 
 	rows[index] = row

@@ -49,6 +49,16 @@ radarFrame:SetScript("OnDragStop", function()
     BordoUIDB = BordoUIDB or {};
     BordoUIDB.chestRadarPos = { point = pt, relativePoint = relPt, x = x, y = y };
 end);
+radarFrame:SetScript("OnMouseDown", function()
+    if arg1 == "RightButton" and MouselookStart then
+        MouselookStart();
+    end
+end);
+radarFrame:SetScript("OnMouseUp", function()
+    if arg1 == "RightButton" and MouselookStop then
+        MouselookStop();
+    end
+end);
 
 -- Shadow Texture
 local arrowShadow = radarFrame:CreateTexture(nil, "BACKGROUND");
