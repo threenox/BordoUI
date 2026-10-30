@@ -1,4 +1,4 @@
--- BordoUI: Meta Build Advisor & Card Choice Highlighter
+﻿-- BordoUI: Meta Build Advisor & Card Choice Highlighter
 -- Provides an in-game meta build guide for all 9 classes and animated card glowing during level-up choices.
 
 BordoUI = BordoUI or {};
@@ -2640,9 +2640,9 @@ for i = 1, 5 do
     slot:SetBackdropColor(0.02, 0.02, 0.04, 0.25);
     slot:SetBackdropBorderColor(0.18, 0.18, 0.24, 0.35);
 
-    local glow = slot:CreateTexture(nil, "BACKGROUND");
-    glow:SetPoint("TOPLEFT", slot, "TOPLEFT", -2, 2);
-    glow:SetPoint("BOTTOMRIGHT", slot, "BOTTOMRIGHT", 2, -2);
+    local glow = slot:CreateTexture(nil, "OVERLAY");
+    glow:SetPoint("TOPLEFT", slot, "TOPLEFT", -3, 3);
+    glow:SetPoint("BOTTOMRIGHT", slot, "BOTTOMRIGHT", 3, -3);
     glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border");
     glow:SetBlendMode("ADD");
     glow:SetAlpha(0.85);
@@ -2654,6 +2654,14 @@ for i = 1, 5 do
     icon:SetHeight(24);
     icon:SetPoint("LEFT", slot, "LEFT", 4, 0);
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
+    local iconGlow = slot:CreateTexture(nil, "OVERLAY");
+    iconGlow:SetPoint("TOPLEFT", icon, "TOPLEFT", -3, 3);
+    iconGlow:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -3);
+    iconGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border");
+    iconGlow:SetBlendMode("ADD");
+    iconGlow:Hide();
+    slot.iconGlow = iconGlow;
 
     local badge = slot:CreateFontString(nil, "OVERLAY");
     badge:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
@@ -2884,27 +2892,6 @@ local function GetLearnedRank(sp)
         end
     end
 
-    -- Tier 3: Check Spellbook
-    if GetNumSpellTabs and GetSpellTabInfo and GetSpellName then
-        for tab = 1, GetNumSpellTabs() do
-            local _, _, offset, count = GetSpellTabInfo(tab);
-            for index = (offset or 0) + 1, (offset or 0) + (count or 0) do
-                local spellName, rankStr = GetSpellName(index, "spell");
-                if spellName and spellName ~= "" then
-                    local sbCanon = CanonicalSpellKey(spellName);
-                    if sbCanon ~= "" and (sbCanon == canonKey or sbCanon == canonName) then
-                        local r = 1;
-                        if rankStr then
-                            local _, _, num = string.find(rankStr, "(%d+)");
-                            if num then r = tonumber(num) or 1; end
-                        end
-                        return r;
-                    end
-                end
-            end
-        end
-    end
-
     return 0;
 end
 
@@ -3088,7 +3075,8 @@ RefreshChoiceHUD = function()
             slot.spellData = sp;
             slot.icon:SetTexture(sp.icon or "Interface\\Icons\\INV_Misc_QuestionMark");
             slot.icon:SetVertexColor(1, 1, 1);
-            slot.glow:Hide();
+            if slot.glow then slot.glow:Hide(); end
+            if slot.iconGlow then slot.iconGlow:Hide(); end
 
             local displayName = sp.name;
             if string.len(displayName) > 13 then
@@ -3105,6 +3093,8 @@ RefreshChoiceHUD = function()
             end
 
             if sp.isTalent then
+                slot.isPickActive = false;
+                slot.isPrioPick = false;
                 slot.badge:SetText("[T]");
                 slot.badge:SetTextColor(0.5, 0.8, 1.0);
                 slot.sTitle:ClearAllPoints();
@@ -3116,6 +3106,8 @@ RefreshChoiceHUD = function()
                 slot:SetBackdropColor(0.02, 0.04, 0.08, 0.35);
                 slot:SetBackdropBorderColor(0.20, 0.35, 0.60, 0.70);
             elseif isBanished then
+                slot.isPickActive = false;
+                slot.isPrioPick = false;
                 slot.badge:SetText("#" .. (sp.prio or i));
                 slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
@@ -3135,19 +3127,33 @@ RefreshChoiceHUD = function()
                 slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
                 slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
                 slot:SetAlpha(1.0);
-                if not isSlotsFull and curRank == 0 then
-                    slot.status:SetText("|cff4ade80[PICK #1]|r");
+                if curRank == 0 and not isSlotsFull then
+                    slot.isPickActive = true;
+                    slot.isPrioPick = true;
+                    slot.status:SetText("|cffffd200[PICK #1]|r");
                     slot.status:Show();
-                    slot:SetBackdropColor(0.03, 0.08, 0.04, 0.35);
-                    slot:SetBackdropBorderColor(0.25, 0.70, 0.38, 0.85);
+                    slot:SetBackdropColor(0.04, 0.07, 0.03, 0.40);
+                    slot:SetBackdropBorderColor(1.0, 0.85, 0.20, 0.90);
+                    if slot.glow then
+                        slot.glow:SetVertexColor(1.0, 0.85, 0.20, 1.0);
+                        slot.glow:Show();
+                    end
+                    if slot.iconGlow then
+                        slot.iconGlow:SetVertexColor(1.0, 0.85, 0.20, 1.0);
+                        slot.iconGlow:Show();
+                    end
                 else
+                    slot.isPickActive = false;
+                    slot.isPrioPick = false;
                     slot.status:SetText("|cffdfba66PRIO|r");
                     slot.status:Show();
                     slot:SetBackdropColor(0.05, 0.04, 0.02, 0.40);
                     slot:SetBackdropBorderColor(0.70, 0.58, 0.28, 0.90);
                 end
-            elseif not isSlotsFull and curRank == 0 then
-                -- Slots 2 to 5: NOT YET LEARNED and free slot exists -> SHOW [PICK] in soft green!
+            elseif curRank == 0 and not isSlotsFull then
+                -- Slots 2 to 5: NOT YET LEARNED and free slot exists -> SHOW [PICK] and PULSE / GLOW!
+                slot.isPickActive = true;
+                slot.isPrioPick = false;
                 slot.badge:SetText("#" .. (sp.prio or i));
                 slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
@@ -3156,10 +3162,21 @@ RefreshChoiceHUD = function()
                 slot.status:SetText("|cff34d399[PICK]|r");
                 slot.status:Show();
                 slot:SetAlpha(1.0);
-                slot:SetBackdropColor(0.02, 0.05, 0.03, 0.28);
-                slot:SetBackdropBorderColor(0.18, 0.48, 0.26, 0.65);
+                slot.icon:SetVertexColor(1, 1, 1);
+                slot:SetBackdropColor(0.02, 0.06, 0.03, 0.35);
+                slot:SetBackdropBorderColor(0.25, 0.90, 0.45, 0.85);
+                if slot.glow then
+                    slot.glow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
+                    slot.glow:Show();
+                end
+                if slot.iconGlow then
+                    slot.iconGlow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
+                    slot.iconGlow:Show();
+                end
             else
                 -- Slots 2 to 5: LEARNED (or slots full): ONLY spell name, centered vertically, no Rank/MAX
+                slot.isPickActive = false;
+                slot.isPrioPick = false;
                 slot.badge:SetText("#" .. (sp.prio or i));
                 slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
@@ -3172,7 +3189,11 @@ RefreshChoiceHUD = function()
                 slot:SetBackdropBorderColor(0.24, 0.22, 0.18, 0.70);
             end
         else
+            slot.isPickActive = false;
+            slot.isPrioPick = false;
             slot.spellData = nil;
+            if slot.glow then slot.glow:Hide(); end
+            if slot.iconGlow then slot.iconGlow:Hide(); end
             if hudMode ~= "JEWELRY" then slot:Hide(); end
         end
     end
@@ -3263,8 +3284,8 @@ RefreshChoiceHUD = function()
         end
     end
 
-    if isSlotsFull or numLearnedPicks >= 5 then
-        hudSub:SetText("|cffffd2005/5 Spells|r - |cffffffff" .. numEquippedJewelry .. "/5 BiS Gear|r");
+    if numLearnedPicks >= 5 then
+        hudSub:SetText("|cff00ff005/5 Spells Complete!|r - |cffffffff" .. numEquippedJewelry .. "/5 BiS Gear|r");
     else
         hudSub:SetText("|cffffd200Pick Advisor|r |cffffffff(" .. numLearnedPicks .. "/5 Spells - " .. numEquippedJewelry .. "/5 BiS)|r");
     end
@@ -3751,8 +3772,22 @@ watcher:SetScript("OnUpdate", function()
     if choiceHUD and choiceHUD:IsShown() then
         for i = 1, 5 do
             local slot = hudSlots[i];
-            if slot and slot.glow and slot.glow:IsShown() then
-                slot.glow:SetAlpha(pulseAlpha);
+            if slot then
+                if slot.glow and slot.glow:IsShown() then
+                    slot.glow:SetAlpha(pulseAlpha);
+                end
+                if slot.iconGlow and slot.iconGlow:IsShown() then
+                    slot.iconGlow:SetAlpha(pulseAlpha);
+                end
+                if slot.isPickActive then
+                    if slot.isPrioPick then
+                        -- Priority #1: Pulsing warm gold glow
+                        slot:SetBackdropBorderColor(1.0 * pulseAlpha, 0.85 * pulseAlpha, 0.20 * pulseAlpha, 0.95);
+                    else
+                        -- Recommended Picks: Pulsing bright emerald green glow
+                        slot:SetBackdropBorderColor(0.20 * pulseAlpha, 0.95 * pulseAlpha, 0.45 * pulseAlpha, 0.90);
+                    end
+                end
             end
         end
         for j = 1, 5 do
