@@ -1979,6 +1979,20 @@ function AZSHelper:DockChatFrame(cf)
 	end
 end
 
+function AZSHelper:UpdateEditBoxInsets()
+	local editBox = getglobal("ChatFrameEditBox")
+	if not editBox then return end
+	local header = getglobal("ChatFrameEditBoxHeader")
+	if header and header:IsShown() and header:GetText() and header:GetText() ~= "" then
+		header:ClearAllPoints()
+		header:SetPoint("LEFT", editBox, "LEFT", 8, 0)
+		local hWidth = math.floor(header:GetWidth() + 0.5)
+		editBox:SetTextInsets(hWidth + 14, 8, 0, 0)
+	else
+		editBox:SetTextInsets(8, 8, 0, 0)
+	end
+end
+
 function AZSHelper:AnchorChatEditBox()
 	local editBox = getglobal("ChatFrameEditBox")
 	if not editBox or not BordoUI_ChatBox then return end
@@ -1988,7 +2002,7 @@ function AZSHelper:AnchorChatEditBox()
 	editBox:SetPoint("TOPLEFT", BordoUI_ChatBox, "BOTTOMLEFT", 0, 1)
 	editBox:SetPoint("TOPRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", 0, 1)
 	editBox:SetHeight(22)
-	editBox:SetTextInsets(8, 8, 0, 0)
+	AZSHelper:UpdateEditBoxInsets()
 end
 
 function AZSHelper:SkinChatEditBox()
