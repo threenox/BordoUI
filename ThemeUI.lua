@@ -320,6 +320,46 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 	end
 end
 
+-- Helper to reliably resolve spell entry from AZS_SPELLS for any button
+local function GetSpellEntryForButton(btnId, currentTexture)
+	if not AZS_SPELLS then return nil end
+	local total = table.getn(AZS_SPELLS)
+	if total == 0 then return nil end
+
+	-- Check icon texture match first
+	if currentTexture and currentTexture ~= "" then
+		for i = 1, total do
+			local e = AZS_SPELLS[i]
+			local icon = e and (e.icon or e[2])
+			if icon and (icon == currentTexture or string.find(currentTexture, icon) or string.find(icon, currentTexture)) then
+				return e
+			end
+		end
+	end
+
+	-- Button 12 is the racial ability
+	if btnId == 12 then
+		for i = 1, total do
+			local e = AZS_SPELLS[i]
+			local rawName = e and (e.name or e.spell or e[1] or "")
+			local rawKey = e and (e.key or e[1] or "")
+			if BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(rawName, rawKey) then
+				return e
+			end
+		end
+		return AZS_SPELLS[total]
+	end
+
+	-- Regular abilities 1..6
+	if btnId <= 6 then
+		if btnId <= total then
+			return AZS_SPELLS[btnId]
+		end
+	end
+
+	return nil
+end
+
 -- Style an Action Button into the flat dark slot look
 local function StyleButton(button)
 	local name = button:GetName()
@@ -407,19 +447,8 @@ local function UpdateSkills()
 
 			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
 			local icon = getglobal("ActionButton"..id.."Icon")
-			local total = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0
-
-			-- In Azeroth Survivors:
-			-- The last entry in AZS_SPELLS (entry total) is the racial ability on button 12.
-			-- Regular abilities fill buttons 1 to (total - 1), up to a max of 6.
-			local entry = nil
-			if AZS_SPELLS and total > 0 then
-				if id == 12 then
-					entry = AZS_SPELLS[total]
-				elseif id < total and id <= 6 then
-					entry = AZS_SPELLS[id]
-				end
-			end
+			local currentTexture = GetActionTexture(pagedID) or (icon and icon:GetTexture())
+			local entry = GetSpellEntryForButton(id, currentTexture)
 
 			local texture = GetActionTexture(pagedID)
 			if (not texture or texture == "") and entry then
@@ -505,16 +534,8 @@ if stockActionButtonUpdateCooldown then
 		end
 		local id = button:GetID()
 		local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
-		local total = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0
-		local entry = nil
-		if AZS_SPELLS and total > 0 then
-			if id == 12 then
-				entry = AZS_SPELLS[total]
-			elseif id < total and id <= 6 then
-				entry = AZS_SPELLS[id]
-			end
-		end
 		local texture = GetActionTexture(pagedID)
+		local entry = GetSpellEntryForButton(id, texture)
 		if (not texture or texture == "") and entry then
 			texture = entry.icon or entry[2]
 		end
@@ -578,15 +599,8 @@ if stockActionButtonUpdate then
 			if icon then
 				local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(this) or this:GetID()
 				local texture = GetActionTexture(pagedID)
-				if (not texture or texture == "") and AZS_SPELLS then
-					local id = this:GetID()
-					local total = table.getn(AZS_SPELLS)
-					local entry = nil
-					if id == 12 then
-						entry = AZS_SPELLS[total]
-					elseif id < total and id <= 6 then
-						entry = AZS_SPELLS[id]
-					end
+				if not texture or texture == "" then
+					local entry = GetSpellEntryForButton(this:GetID(), icon:GetTexture())
 					if entry and (entry.icon or entry[2]) then
 						texture = entry.icon or entry[2]
 					end
@@ -1997,6 +2011,27 @@ end
 
 function AZSHelper:DockChatFrame(cf)
 	if not cf or not BordoUI_ChatBox then return end
+
+	-- 1. Disable the C++ TitleRegion completely so the engine cannot drag this frame
+	if cf.GetTitleRegion then
+		local tr = cf:GetTitleRegion()
+		if tr then
+			tr:ClearAllPoints()
+			if tr.Hide then tr:Hide() end
+		end
+	end
+
+	-- 2. Mark frame locked in C++ engine and Blizzard FCF
+	if cf.GetID and cf:GetID() then
+		SetChatWindowLocked(cf:GetID(), 1)
+	end
+	cf.isLocked = 1
+	cf.isDocked = 1
+	cf:SetMovable(false)
+	cf.StartMoving = function() end
+	cf.StopMovingOrSizing = function() end
+
+	-- 3. Parent to BordoUI_ChatBox and pin points
 	if cf.ClearAllPoints and cf._bordoLockHooked then
 		cf._allowReposition = true
 	end
@@ -2007,11 +2042,8 @@ function AZSHelper:DockChatFrame(cf)
 	cf:SetPoint("BOTTOMRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", -6, 6)
 	cf:SetFrameLevel(BordoUI_ChatBox:GetFrameLevel() + 5)
 	cf:SetClampedToScreen(true)
-	cf:SetMovable(false)
-	cf.StartMoving = function() end
-	cf.StopMovingOrSizing = function() end
-	cf.isLocked = 1
-	cf.isDocked = 1
+
+	-- 4. Strip drag scripts and wire mouse events
 	cf:RegisterForDrag()
 	cf:SetScript("OnDragStart", function() end)
 	cf:SetScript("OnDragStop", function() end)
@@ -2035,6 +2067,7 @@ function AZSHelper:DockChatFrame(cf)
 		end
 	end)
 
+	-- 5. Lock SetPoint and ClearAllPoints against external Blizzard or cache repositioning
 	if not cf._bordoLockHooked then
 		cf._bordoLockHooked = true
 		local orig_SetPoint = cf.SetPoint
@@ -2052,14 +2085,19 @@ function AZSHelper:DockChatFrame(cf)
 		cf._allowReposition = false
 	end
 
-	if cf:GetName() then
-		local resizeBtn = getglobal(cf:GetName() .. "ResizeButton")
-		if resizeBtn then
-			resizeBtn:Hide()
-			resizeBtn.Show = function() end
-			resizeBtn:EnableMouse(false)
-			resizeBtn:SetScript("OnMouseDown", nil)
-			resizeBtn:SetScript("OnMouseUp", nil)
+	-- 6. Hide and neutralize all default Blizzard buttons and resize handles
+	local name = cf:GetName()
+	if name then
+		local btnNames = { "ResizeButton", "ResizeBottom", "UpButton", "DownButton", "BottomButton" }
+		for b = 1, table.getn(btnNames) do
+			local btn = getglobal(name .. btnNames[b])
+			if btn then
+				btn:Hide()
+				btn.Show = function() end
+				btn:EnableMouse(false)
+				btn:ClearAllPoints()
+				btn:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -2000, 2000)
+			end
 		end
 	end
 end
@@ -2197,7 +2235,12 @@ function AZSHelper:SetupChatChannels()
 end
 
 function AZSHelper:DockAllChatFrames()
-	if not BordoUI_ChatBox then return end
+	if not BordoUI_ChatBox or AZSHelper._dockingInProgress then return end
+	AZSHelper._dockingInProgress = true
+	if FCF_Set_ChatLocked then
+		FCF_Set_ChatLocked(1)
+	end
+	CHAT_LOCKED = "1"
 	for i = 1, 7 do
 		local cf = getglobal("ChatFrame" .. i)
 		if cf then
@@ -2228,12 +2271,14 @@ function AZSHelper:DockAllChatFrames()
 		end
 	end
 	if ChatFrame1 and not (ChatFrame2 and ChatFrame2:IsShown()) then
+		AZSHelper:DockChatFrame(ChatFrame1)
 		ChatFrame1:Show()
 	end
 	if ChatFrame2 and not ChatFrame2:IsShown() then
 		ChatFrame2:Hide()
 	end
 	AZSHelper:AnchorChatEditBox()
+	AZSHelper._dockingInProgress = nil
 end
 
 function AZSHelper:SkinChatWindow()
@@ -2364,8 +2409,11 @@ function AZSHelper:SkinChatWindow()
 	end
 
 	tabGeneral:SetScript("OnClick", function()
-		if ChatFrame1 then ChatFrame1:Show() end
 		if ChatFrame2 then ChatFrame2:Hide() end
+		if ChatFrame1 then
+			AZSHelper:DockChatFrame(ChatFrame1)
+			ChatFrame1:Show()
+		end
 		SELECTED_CHAT_FRAME = ChatFrame1
 		DEFAULT_CHAT_FRAME = ChatFrame1
 		UpdateChatTabVisuals()
@@ -2379,7 +2427,10 @@ function AZSHelper:SkinChatWindow()
 
 	tabCombat:SetScript("OnClick", function()
 		if ChatFrame1 then ChatFrame1:Hide() end
-		if ChatFrame2 then ChatFrame2:Show() end
+		if ChatFrame2 then
+			AZSHelper:DockChatFrame(ChatFrame2)
+			ChatFrame2:Show()
+		end
 		SELECTED_CHAT_FRAME = ChatFrame2
 		UpdateChatTabVisuals()
 	end)
@@ -2395,37 +2446,66 @@ function AZSHelper:SkinChatWindow()
 	-- Dock all chat frames cleanly inside chatBox
 	AZSHelper:DockAllChatFrames()
 
-	if FCF_SetLocked then
-		FCF_SetLocked(chat, 1)
+	for i = 1, 7 do
+		local cf = getglobal("ChatFrame" .. i)
+		if cf then
+			cf.isLocked = 1
+			cf.isDocked = 1
+			if cf.GetID and cf:GetID() then SetChatWindowLocked(cf:GetID(), 1) end
+		end
 	end
 
-	-- Modern Scroll Buttons docked inside left margin of chatBox
-	local upBtn = getglobal("ChatFrame1UpButton")
-	local downBtn = getglobal("ChatFrame1DownButton")
-	local bottomBtn = getglobal("ChatFrame1BottomButton")
+	-- Modern Unified Scroll Buttons docked inside left margin of chatBox
+	local function GetActiveChat()
+		if ChatFrame2 and ChatFrame2:IsShown() then
+			return ChatFrame2
+		end
+		return ChatFrame1
+	end
+
+	local upBtn = CreateFrame("Button", "BordoUI_ChatScrollUp", chatBox)
+	SkinChatButton(upBtn, "^")
+	upBtn:SetParent(chatBox)
+	upBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+	upBtn:ClearAllPoints()
+	upBtn:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -26)
+	upBtn:SetScript("OnClick", function()
+		local active = GetActiveChat()
+		if active then
+			if IsShiftKeyDown() then active:ScrollToTop() else active:ScrollUp() end
+		end
+	end)
+
+	local downBtn = CreateFrame("Button", "BordoUI_ChatScrollDown", chatBox)
+	SkinChatButton(downBtn, "v")
+	downBtn:SetParent(chatBox)
+	downBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+	downBtn:ClearAllPoints()
+	downBtn:SetPoint("TOP", upBtn, "BOTTOM", 0, -3)
+	downBtn:SetScript("OnClick", function()
+		local active = GetActiveChat()
+		if active then
+			if IsShiftKeyDown() then active:ScrollToBottom() else active:ScrollDown() end
+		end
+	end)
+
+	local bottomBtn = CreateFrame("Button", "BordoUI_ChatScrollBottom", chatBox)
+	SkinChatButton(bottomBtn, ">>")
+	bottomBtn:SetParent(chatBox)
+	bottomBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+	bottomBtn:ClearAllPoints()
+	bottomBtn:SetPoint("TOP", downBtn, "BOTTOM", 0, -3)
+	bottomBtn:SetScript("OnClick", function()
+		local active = GetActiveChat()
+		if active then active:ScrollToBottom() end
+	end)
+
 	local menuBtn = getglobal("ChatFrameMenuButton")
-	if menuBtn then menuBtn:Hide() end
-
-	if upBtn then
-		SkinChatButton(upBtn, "^")
-		upBtn:SetParent(chatBox)
-		upBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
-		upBtn:ClearAllPoints()
-		upBtn:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -26)
-	end
-	if downBtn then
-		SkinChatButton(downBtn, "v")
-		downBtn:SetParent(chatBox)
-		downBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
-		downBtn:ClearAllPoints()
-		downBtn:SetPoint("TOP", upBtn or chatBox, upBtn and "BOTTOM" or "TOPLEFT", 0, upBtn and -3 or -45)
-	end
-	if bottomBtn then
-		SkinChatButton(bottomBtn, ">>")
-		bottomBtn:SetParent(chatBox)
-		bottomBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
-		bottomBtn:ClearAllPoints()
-		bottomBtn:SetPoint("TOP", downBtn or chatBox, downBtn and "BOTTOM" or "TOPLEFT", 0, downBtn and -3 or -64)
+	if menuBtn then
+		menuBtn:Hide()
+		menuBtn.Show = function() end
+		menuBtn:ClearAllPoints()
+		menuBtn:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -2000, 2000)
 	end
 
 	-- Neutralize Blizzard FCF undocking and frame dragging functions permanently
@@ -2453,6 +2533,18 @@ function AZSHelper:SkinChatWindow()
 		AZSHelper._FCF_MouseDownHooked = true
 		FCF_OnMouseDown = function(button) end
 	end
+	if type(FCF_Tab_OnClick) == "function" and not AZSHelper._FCF_TabClickHooked then
+		AZSHelper._FCF_TabClickHooked = true
+		FCF_Tab_OnClick = function(button) end
+	end
+	if type(FCF_Set_NormalChat) == "function" and not AZSHelper._FCF_NormalChatHooked then
+		AZSHelper._FCF_NormalChatHooked = true
+		FCF_Set_NormalChat = function() end
+	end
+	ChatFrame_OnDragStart = function() end
+	ChatFrame_OnDragStop = function() end
+	FloatingChatFrame_OnDragStart = function() end
+	FloatingChatFrame_OnDragStop = function() end
 
 	-- Hook Blizzard FCF functions to maintain docking and prevent text stretching
 	if type(FCF_RestorePositionAndDimensions) == "function" and not AZSHelper._FCF_RestoreHooked then
@@ -2460,7 +2552,7 @@ function AZSHelper:SkinChatWindow()
 		local orig_FCF_Restore = FCF_RestorePositionAndDimensions
 		FCF_RestorePositionAndDimensions = function(chatFrame)
 			orig_FCF_Restore(chatFrame)
-			if BordoUI_ChatBox then
+			if BordoUI_ChatBox and not AZSHelper._dockingInProgress then
 				AZSHelper:DockAllChatFrames()
 			end
 		end
@@ -2471,7 +2563,7 @@ function AZSHelper:SkinChatWindow()
 		local orig_FCF_DockUpdate = FCF_DockUpdate
 		FCF_DockUpdate = function()
 			orig_FCF_DockUpdate()
-			if BordoUI_ChatBox then
+			if BordoUI_ChatBox and not AZSHelper._dockingInProgress then
 				AZSHelper:DockAllChatFrames()
 			end
 		end
@@ -2482,7 +2574,7 @@ function AZSHelper:SkinChatWindow()
 		local orig_FCF_SetLocked = FCF_SetLocked
 		FCF_SetLocked = function(chatFrame, isLocked)
 			orig_FCF_SetLocked(chatFrame, 1)
-			if BordoUI_ChatBox then
+			if BordoUI_ChatBox and not AZSHelper._dockingInProgress then
 				AZSHelper:DockAllChatFrames()
 			end
 		end
@@ -2494,21 +2586,27 @@ function AZSHelper:SkinChatWindow()
 		AZSHelper._OpenChatHooked = true
 		local orig_ChatFrame_OpenChat = ChatFrame_OpenChat
 		ChatFrame_OpenChat = function(text, chatFrame)
-			if not chatFrame then
+			if not chatFrame or chatFrame == ChatFrame2 then
 				chatFrame = ChatFrame1
 			end
+			if ChatFrame1 and not ChatFrame1:IsShown() then
+				if ChatFrame2 then ChatFrame2:Hide() end
+				AZSHelper:DockChatFrame(ChatFrame1)
+				ChatFrame1:Show()
+			end
 			SELECTED_CHAT_FRAME = chatFrame
+			DEFAULT_CHAT_FRAME = chatFrame
 			if orig_ChatFrame_OpenChat then
 				orig_ChatFrame_OpenChat(text, chatFrame)
 			end
 			local editBox = getglobal("ChatFrameEditBox")
 			if editBox then
 				if not editBox.chatType or editBox.chatType == "" then
-					editBox.chatType = "SAY"
-				end
-				if editBox.chatType == "CHANNEL" then
-					local chId = GetChannelName(editBox.channelTarget or 1)
-					if not chId or chId == 0 then
+					local chId = GetChannelName(1)
+					if chId and chId > 0 then
+						editBox.chatType = "CHANNEL"
+						editBox.channelTarget = chId
+					else
 						editBox.chatType = "SAY"
 					end
 				end
@@ -2516,6 +2614,32 @@ function AZSHelper:SkinChatWindow()
 			if AZSHelper and AZSHelper.AnchorChatEditBox then
 				AZSHelper:AnchorChatEditBox()
 			end
+			if UpdateChatTabVisuals then
+				UpdateChatTabVisuals()
+			end
+		end
+	end
+
+	-- Hook ChatEdit_SendText to ensure messages sent appear in ChatFrame1
+	if type(ChatEdit_SendText) == "function" and not AZSHelper._SendTextHooked then
+		AZSHelper._SendTextHooked = true
+		local orig_ChatEdit_SendText = ChatEdit_SendText
+		ChatEdit_SendText = function(editBox, addHistory)
+			if editBox and editBox.chatType == "CHANNEL" then
+				local chId = GetChannelName(editBox.channelTarget or 1)
+				if not chId or chId == 0 then
+					editBox.chatType = "SAY"
+				end
+			end
+			if ChatFrame1 and not ChatFrame1:IsShown() then
+				if ChatFrame2 then ChatFrame2:Hide() end
+				AZSHelper:DockChatFrame(ChatFrame1)
+				ChatFrame1:Show()
+				SELECTED_CHAT_FRAME = ChatFrame1
+				DEFAULT_CHAT_FRAME = ChatFrame1
+				if UpdateChatTabVisuals then UpdateChatTabVisuals() end
+			end
+			orig_ChatEdit_SendText(editBox, addHistory)
 		end
 	end
 

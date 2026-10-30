@@ -4,6 +4,26 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.15] - 2026-10-30
+
+### Fixed & Improved
+- **Resolved Stack Overflow Crash (`ThemeUI.lua`):**
+  - Eliminated recursion loop between `AZSHelper:DockChatFrame()`, `AZSHelper:DockAllChatFrames()` and hooked `FCF_SetLocked()`.
+  - Added reentrancy guard `_dockingInProgress` to `DockAllChatFrames()`, preventing any re-trigger during layout restoration.
+- **Permanent Chat Frame Lock & Full Blizzard Stock Asset Cleanup (`ThemeUI.lua`):**
+  - Cleared C++ engine `TitleRegion` on `ChatFrame1..7`, permanently preventing any engine-level window dragging with left- or right-click.
+  - Fully concealed all stock Blizzard tabs (`ChatFrame1..7Tab`) and arrow scroll buttons (`ChatFrame1..7UpButton`, `DownButton`, `BottomButton`), moving them offscreen and neutralizing `.Show`.
+  - Maintained clean, custom modern tabs `[ Chat ]` and `[ Combat Log ]` matching the dark BordoUI aesthetic.
+- **Fixed Message Routing & Instant Sent Message Display (`ThemeUI.lua`):**
+  - Ensured `ChatFrame_OpenChat` and `ChatEdit_SendText` automatically bring `ChatFrame1` (`[ Chat ]`) into focus when opening chat or sending messages, preventing typed chat from disappearing into hidden background frames.
+  - Automatically defaults input channel to General (`CHANNEL 1`) or `SAY`.
+- **Universal Instant Action Bar Spell Tooltips (`BuildList.lua`, `ThemeUI.lua`):**
+  - Fixed off-by-one index calculation (`buttonIndex <= maxRegular` instead of `buttonIndex < total`), ensuring Level 1 starting spells (like Smite) and newly learned spells immediately show tooltips on the very first hover without requiring multiple back-and-forth cursor movements.
+  - Added texture-first spell resolution matching across all classes and abilities.
+  - Kept centered downward tooltip positioning directly under the Kill & Gold tally frame (`AZSHelper_TallyFrame`).
+
+---
+
 ## [2.8.14] - 2026-10-30
 
 ### Fixed & Improved

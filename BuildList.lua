@@ -346,6 +346,45 @@ function SurvivorUI_AnchorCenteredSpellTooltip(owner)
 	if owner then PositionBuildTooltip(owner, true) end
 end
 
+local function BordoUI_GetActionSpellEntry(btnIndex, btnTexture)
+	if not AZS_SPELLS then return nil end
+	local total = table.getn(AZS_SPELLS)
+	if total == 0 then return nil end
+
+	-- Check icon texture match first
+	if btnTexture and btnTexture ~= "" then
+		for i = 1, total do
+			local e = AZS_SPELLS[i]
+			local icon = e and (e.icon or e[2])
+			if icon and (icon == btnTexture or string.find(btnTexture, icon) or string.find(icon, btnTexture)) then
+				return e
+			end
+		end
+	end
+
+	-- Button 12 is the racial ability
+	if btnIndex == 12 then
+		for i = 1, total do
+			local e = AZS_SPELLS[i]
+			local rawName = e and (e.name or e.spell or e[1] or "")
+			local rawKey = e and (e.key or e[1] or "")
+			if BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(rawName, rawKey) then
+				return e
+			end
+		end
+		return AZS_SPELLS[total]
+	end
+
+	-- Regular abilities 1..6
+	if btnIndex <= 6 then
+		if btnIndex <= total then
+			return AZS_SPELLS[btnIndex]
+		end
+	end
+
+	return nil
+end
+
 -- Action-button tooltips can remain visible while moving between slots, so
 -- OnShow alone is not a reliable place to reposition them. Route each filled
 -- action button's existing tooltip to the same centered, downward layout.
@@ -354,6 +393,7 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 		local button = getglobal("ActionButton"..index)
 		if button then
 			button:EnableMouse(true)
+			button.bordoBuildTooltip = true
 			local actionButton = button
 			local buttonIndex = index
 			local stockLeave = button:GetScript("OnLeave")
@@ -362,15 +402,8 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 				local icon = getglobal("ActionButton"..buttonIndex.."Icon")
 				local texture = icon and icon:GetTexture()
 				local hasAction = action and HasAction and HasAction(action)
-				local total = AZS_SPELLS and table.getn(AZS_SPELLS) or 0
-				local entry = nil
-				if total > 0 then
-					if buttonIndex == 12 then
-						entry = AZS_SPELLS[total]
-					elseif buttonIndex < total and buttonIndex <= 6 then
-						entry = AZS_SPELLS[buttonIndex]
-					end
-				end
+				local entry = BordoUI_GetActionSpellEntry(buttonIndex, texture)
+
 				if (not texture or texture == "") and not hasAction and not entry then
 					return
 				end
@@ -395,7 +428,6 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 							GameTooltip:AddLine(entry.desc or entry.description, 0.8, 0.8, 0.8, 1)
 						end
 					else
-						actionButton.bordoNeedRefresh = 0.1
 						return
 					end
 				end
@@ -417,17 +449,6 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 			actionButton:SetScript("OnEnter", onEnter)
 			actionButton.bordoCenteredOnLeave = onLeave
 			actionButton:SetScript("OnLeave", onLeave)
-			actionButton:SetScript("OnUpdate", function()
-				if this.bordoNeedRefresh and GameTooltip:GetOwner() == this then
-					this.bordoNeedRefresh = this.bordoNeedRefresh - (arg1 or 0.05)
-					if this.bordoNeedRefresh <= 0 then
-						this.bordoNeedRefresh = nil
-						if this.bordoCenteredOnEnter then
-							this.bordoCenteredOnEnter()
-						end
-					end
-				end
-			end)
 		end
 	end
 end
