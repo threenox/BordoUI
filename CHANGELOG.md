@@ -4,6 +4,20 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.12] - 2026-10-30
+
+### Fixed & Improved
+- **Tooltip Anchored Under Kill & Gold Bar (`BuildList.lua`):**
+  - Restored downward tooltip positioning: action button tooltips now anchor directly **under** the Kill & Gold tally frame (`AZSHelper_TallyFrame`, `anchorBottom - 4`), expanding cleanly downward toward the bottom of the screen.
+  - Resolved missing tooltip delay: eliminated the fragile `if not texture or texture == ""` abort and added an `OnUpdate` refresh pass, ensuring that even if action textures or spell details take a microsecond to load from the game client, the tooltip displays immediately on the very first hover without requiring multiple in-and-out hovers.
+  - Made `AbilityTooltip.lua` spell reading case-insensitive and tolerant of localization ("cooldown", "abklingzeit", "sec", "sek"), guaranteeing spells like Smite always parse reliably.
+- **Permanent Chat Frame Lock & Tab Cleanup (`ThemeUI.lua`, `Core.lua`):**
+  - **Completely Fixed & Unmovable**: Made `BordoUI_ChatBox` and `ChatFrame1..7` permanently fixed at `BOTTOMLEFT, 14, 26`. Stripped all drag handlers and unlinked from move mode so it can never be moved by accident or dragged out with left- or right-click.
+  - **Removed Legacy Blizzard Tabs**: Completely suppressed and hid all default Blizzard tabs (`ChatFrame1Tab` .. `ChatFrame7Tab`) and textures (including the blue "General" tab and "Combat Log"), leaving only our clean, unified "Chat" title in our modern dark style.
+  - **Full Right-Click Camera Steering**: Right-clicking anywhere over the chat area, title bar, or background now provides seamless camera rotation (`MouselookStart()`).
+  - **Enforced Docking & Cache Reset**: Reset `SetUserPlaced(0)` across chat frames and overridden `FCF_RestorePositionAndDimensions` to prevent Blizzard from ever restoring floating positions from `layout-cache.txt`.
+---
+
 ## [2.8.11] - 2026-10-30
 
 ### Fixed & Improved

@@ -306,7 +306,9 @@ local function Read()
 		local left = Plain(getglobal("GameTooltipTextLeft"..line):GetText())
 		local right = getglobal("GameTooltipTextRight"..line)
 		local rightText = right:IsShown() and Plain(right:GetText()) or ""
-		if string.find(rightText, "cooldown", 1, true) or left == "Automatic" or left == "Passive" then
+		local rLower = string.lower(rightText)
+		local lLower = string.lower(left)
+		if string.find(rLower, "cooldown") or string.find(rLower, "abklingzeit") or string.find(rLower, "sec") or string.find(rLower, "sek") or lLower == "automatic" or lLower == "passive" or string.find(lLower, "auto") then
 			castLine = line
 			ability.cast = left
 			ability.cooldown = rightText ~= "" and rightText or nil

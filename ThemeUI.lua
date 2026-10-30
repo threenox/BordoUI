@@ -2134,30 +2134,54 @@ function AZSHelper:DockAllChatFrames()
 		if cf then
 			AZSHelper:DockChatFrame(cf)
 		end
+		local tab = getglobal("ChatFrame"..i.."Tab")
+		if tab then
+			tab:Hide()
+			tab.Show = function() end
+			tab:SetAlpha(0)
+			tab:EnableMouse(false)
+			tab:RegisterForDrag()
+			tab:SetScript("OnDragStart", function() end)
+			tab:SetScript("OnDragStop", function() end)
+			local tLeft = getglobal("ChatFrame"..i.."TabLeft")
+			local tMid = getglobal("ChatFrame"..i.."TabMiddle")
+			local tRight = getglobal("ChatFrame"..i.."TabRight")
+			local tHigh = getglobal("ChatFrame"..i.."TabHighlight")
+			if tLeft then tLeft:Hide(); tLeft.Show = function() end end
+			if tMid then tMid:Hide(); tMid.Show = function() end end
+			if tRight then tRight:Hide(); tRight.Show = function() end end
+			if tHigh then tHigh:Hide(); tHigh.Show = function() end end
+		end
 	end
-	if ChatFrame1Tab and BordoUI_ChatTitle then
-		ChatFrame1Tab:ClearAllPoints()
-		ChatFrame1Tab:SetPoint("LEFT", BordoUI_ChatTitle, "RIGHT", 8, 0)
+	if ChatFrame1 then
+		ChatFrame1:Show()
+	end
+	if ChatFrame2 then
+		ChatFrame2:Hide()
 	end
 	AZSHelper:AnchorChatEditBox()
 end
 
 function AZSHelper:SkinChatWindow()
-		if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
+	if AZSHelper and AZSHelper.DockAllChatFrames then AZSHelper:DockAllChatFrames() end
 	local chat = ChatFrame1
 	if not chat or BordoUI_ChatBox then return end
 
-	-- Modern Styled Container Box (Single Singleton Instance)
+	-- Modern Styled Container Box - Strictly Unmovable & Fixed
 	local chatBox = CreateFrame("Frame", "BordoUI_ChatBox", UIParent)
 	chatBox:SetWidth(380)
 	chatBox:SetHeight(145)
+	chatBox:ClearAllPoints()
 	chatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26)
 	chatBox:SetFrameStrata("BACKGROUND")
 	chatBox:SetFrameLevel(1)
 	chatBox:SetClampedToScreen(true)
-	chatBox:SetMovable(true)
+	chatBox:SetMovable(false)
+	chatBox.StartMoving = function() end
+	chatBox.StopMovingOrSizing = function() end
+	chatBox:SetUserPlaced(0)
 	chatBox:EnableMouse(true)
-	chatBox:RegisterForDrag("LeftButton")
+	chatBox:RegisterForDrag()
 	chatBox:SetBackdrop({
 		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -2169,13 +2193,13 @@ function AZSHelper:SkinChatWindow()
 	chatBox:SetBackdropColor(0.04, 0.04, 0.06, 0.75) -- Translucent modern dark box
 	chatBox:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
 
-	-- Header Bar with Title, Drag Handle & Lock Button
+	-- Header Bar with Title only - No tabs, no drag handles, purely styled title
 	local chatHeader = CreateFrame("Frame", nil, chatBox)
 	chatHeader:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 0, 0)
 	chatHeader:SetPoint("TOPRIGHT", chatBox, "TOPRIGHT", 0, 0)
 	chatHeader:SetHeight(22)
 	chatHeader:EnableMouse(true)
-	chatHeader:RegisterForDrag("LeftButton")
+	chatHeader:RegisterForDrag()
 
 	local chatTitle = chatHeader:CreateFontString("BordoUI_ChatTitle", "OVERLAY")
 	chatTitle:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
@@ -2183,25 +2207,8 @@ function AZSHelper:SkinChatWindow()
 	chatTitle:SetTextColor(0.85, 0.85, 0.88)
 	chatTitle:SetText("Chat")
 
-	local function SaveChatPos()
-		local pt, _, relPt, x, y = chatBox:GetPoint()
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.chatPos = { point = pt, relativePoint = relPt, x = x, y = y }
-	end
-
-	local function StartChatDrag()
-		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-			chatBox:StartMoving()
-		end
-	end
-	local function StopChatDrag()
-		chatBox:StopMovingOrSizing()
-		SaveChatPos()
-		AZSHelper:DockAllChatFrames()
-	end
-
-	chatHeader:SetScript("OnDragStart", StartChatDrag)
-	chatHeader:SetScript("OnDragStop", StopChatDrag)
+	chatHeader:SetScript("OnDragStart", function() end)
+	chatHeader:SetScript("OnDragStop", function() end)
 	chatHeader:SetScript("OnMouseDown", function()
 		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
 	end)
@@ -2209,23 +2216,14 @@ function AZSHelper:SkinChatWindow()
 		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
 	end)
 
-	chatBox:SetScript("OnDragStart", StartChatDrag)
-	chatBox:SetScript("OnDragStop", StopChatDrag)
+	chatBox:SetScript("OnDragStart", function() end)
+	chatBox:SetScript("OnDragStop", function() end)
 	chatBox:SetScript("OnMouseDown", function()
 		if arg1 == "RightButton" and MouselookStart then MouselookStart() end
 	end)
 	chatBox:SetScript("OnMouseUp", function()
 		if arg1 == "RightButton" and MouselookStop then MouselookStop() end
 	end)
-
-	if ( BordoUI and BordoUI.AttachLockButton ) then
-		BordoUI:AttachLockButton(chatBox, "TOPRIGHT", chatHeader, "TOPRIGHT", -4, -3)
-	end
-
-	-- Restore Saved Position
-	if BordoUIDB and BordoUIDB.chatPos and BordoUIDB.chatPos.point then
-		AZSHelper:RestorePosition(chatBox, BordoUIDB.chatPos)
-	end
 
 	-- Dock all chat frames cleanly inside chatBox
 	AZSHelper:DockAllChatFrames()

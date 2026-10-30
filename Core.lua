@@ -687,7 +687,6 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
         { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos" },
         { frame = BordoUI_MeterFrame or SurvivorUIMeter, name = "Damage Meter (Drag Me)", key = "meterPos" },
-        { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
 		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos" },

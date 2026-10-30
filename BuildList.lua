@@ -299,15 +299,16 @@ local function PositionBuildTooltip(ownerRow, centeredDown)
 	GameTooltip:ClearAllPoints()
 	if centeredDown then
 		local hud = getglobal("SurvivorUIRow")
-		local anchorTop = ownerRow and ownerRow:GetTop() or 0
-		if hud and hud:IsShown() then
-			local hTop = hud:GetTop()
-			if hTop and hTop > anchorTop then anchorTop = hTop end
+		local tally = (UI and UI.tallyFrame) or getglobal("AZSHelper_TallyFrame")
+		local anchorBottom = ownerRow and ownerRow:GetBottom() or 0
+		if tally and tally:IsShown() and tally:GetBottom() then
+			anchorBottom = tally:GetBottom()
+		elseif hud and hud:IsShown() and hud:GetBottom() then
+			anchorBottom = hud:GetBottom()
 		end
 		if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
-		-- Anchor ABOVE the action bar: tooltip expands UPWARDS into open space,
-		-- perfectly readable and never occluding the bar or colliding with the mouse cursor!
-		GameTooltip:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, anchorTop + 8)
+		-- Anchor BELOW the Kill- and Gold-Fenster (AZSHelper_TallyFrame):
+		GameTooltip:SetPoint("TOP", UIParent, "BOTTOM", 0, anchorBottom - 4)
 		if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
 		return
 	end
@@ -353,66 +354,80 @@ function SurvivorUI_InstallCenteredActionButtonTooltips()
 		local button = getglobal("ActionButton"..index)
 		if button then
 			button:EnableMouse(true)
-			if button:GetScript("OnEnter") ~= button.bordoCenteredOnEnter then
-				local actionButton = button
-				local buttonIndex = index
-				local stockLeave = button:GetScript("OnLeave")
-				local onEnter = function()
-					local icon = getglobal("ActionButton"..buttonIndex.."Icon")
-					local texture = icon and icon:GetTexture()
-					if not texture or texture == "" then return end
-					local action = ActionButton_GetPagedID and ActionButton_GetPagedID(actionButton) or actionButton:GetID()
-					if not (action and GameTooltip.SetAction) then return end
-					GameTooltip.bordoBuildTooltipActive = true
-					if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
-					GameTooltip:SetOwner(actionButton, "ANCHOR_NONE")
-					local ok = pcall(GameTooltip.SetAction, GameTooltip, action)
-					local lines = GameTooltip:NumLines()
-					if (not ok) or lines < 1 then
-						-- Fallback: resolve from AZS_SPELLS if native action slot has no spell
-						local total = AZS_SPELLS and table.getn(AZS_SPELLS) or 0
-						local entry = nil
-						if total > 0 then
-							if buttonIndex == 12 then
-								entry = AZS_SPELLS[total]
-							elseif buttonIndex < total and buttonIndex <= 6 then
-								entry = AZS_SPELLS[buttonIndex]
-							end
-						end
-						if entry then
-							GameTooltip:ClearLines()
-							local spellName = entry.name or entry[1] or ""
-							local spellRank = entry.rank or entry[3]
-							if spellRank and spellRank ~= "" then
-								GameTooltip:AddDoubleLine(spellName, "Rank "..tostring(spellRank), 1, 1, 1, 0.6, 0.6, 0.6)
-							else
-								GameTooltip:AddLine(spellName, 1, 1, 1)
-							end
-							if entry.desc or entry.description then
-								GameTooltip:AddLine(entry.desc or entry.description, 0.8, 0.8, 0.8, 1)
-							end
+			local actionButton = button
+			local buttonIndex = index
+			local stockLeave = button:GetScript("OnLeave")
+			local onEnter = function()
+				local action = ActionButton_GetPagedID and ActionButton_GetPagedID(actionButton) or actionButton:GetID()
+				local icon = getglobal("ActionButton"..buttonIndex.."Icon")
+				local texture = icon and icon:GetTexture()
+				local hasAction = action and HasAction and HasAction(action)
+				local total = AZS_SPELLS and table.getn(AZS_SPELLS) or 0
+				local entry = nil
+				if total > 0 then
+					if buttonIndex == 12 then
+						entry = AZS_SPELLS[total]
+					elseif buttonIndex < total and buttonIndex <= 6 then
+						entry = AZS_SPELLS[buttonIndex]
+					end
+				end
+				if (not texture or texture == "") and not hasAction and not entry then
+					return
+				end
+
+				GameTooltip.bordoBuildTooltipActive = true
+				if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
+				GameTooltip:SetOwner(actionButton, "ANCHOR_NONE")
+				local ok = pcall(GameTooltip.SetAction, GameTooltip, action)
+				local lines = GameTooltip:NumLines()
+				if (not ok) or lines < 1 then
+					-- Fallback: resolve from AZS_SPELLS if native action slot has no spell
+					if entry then
+						GameTooltip:ClearLines()
+						local spellName = entry.name or entry[1] or ""
+						local spellRank = entry.rank or entry[3]
+						if spellRank and spellRank ~= "" then
+							GameTooltip:AddDoubleLine(spellName, "Rank "..tostring(spellRank), 1, 1, 1, 0.6, 0.6, 0.6)
 						else
-							return
+							GameTooltip:AddLine(spellName, 1, 1, 1)
+						end
+						if entry.desc or entry.description then
+							GameTooltip:AddLine(entry.desc or entry.description, 0.8, 0.8, 0.8, 1)
+						end
+					else
+						actionButton.bordoNeedRefresh = 0.1
+						return
+					end
+				end
+				GameTooltip.bordoBuildTooltipActive = true
+				if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
+				GameTooltip:Show()
+				if SurvivorUI_HideDuplicateSpellTooltips then SurvivorUI_HideDuplicateSpellTooltips() end
+				PositionBuildTooltip(actionButton, true)
+			end
+			local onLeave = function()
+				actionButton.bordoNeedRefresh = nil
+				if stockLeave then stockLeave() end
+				if GameTooltip.GetOwner and GameTooltip:GetOwner() == actionButton then
+					GameTooltip.bordoBuildTooltipActive = nil
+					GameTooltip:Hide()
+				end
+			end
+			actionButton.bordoCenteredOnEnter = onEnter
+			actionButton:SetScript("OnEnter", onEnter)
+			actionButton.bordoCenteredOnLeave = onLeave
+			actionButton:SetScript("OnLeave", onLeave)
+			actionButton:SetScript("OnUpdate", function()
+				if this.bordoNeedRefresh and GameTooltip:GetOwner() == this then
+					this.bordoNeedRefresh = this.bordoNeedRefresh - (arg1 or 0.05)
+					if this.bordoNeedRefresh <= 0 then
+						this.bordoNeedRefresh = nil
+						if this.bordoCenteredOnEnter then
+							this.bordoCenteredOnEnter()
 						end
 					end
-					GameTooltip.bordoBuildTooltipActive = true
-					if GameTooltip.EnableMouse then GameTooltip:EnableMouse(false) end
-					GameTooltip:Show()
-					if SurvivorUI_HideDuplicateSpellTooltips then SurvivorUI_HideDuplicateSpellTooltips() end
-					PositionBuildTooltip(actionButton, true)
 				end
-				local onLeave = function()
-					if stockLeave then stockLeave() end
-					if GameTooltip.GetOwner and GameTooltip:GetOwner() == actionButton then
-						GameTooltip.bordoBuildTooltipActive = nil
-						GameTooltip:Hide()
-					end
-				end
-				actionButton.bordoCenteredOnEnter = onEnter
-				actionButton:SetScript("OnEnter", onEnter)
-				actionButton.bordoCenteredOnLeave = onLeave
-				actionButton:SetScript("OnLeave", onLeave)
-			end
+			end)
 		end
 	end
 end
