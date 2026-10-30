@@ -291,8 +291,6 @@ meterResizeGrip:SetWidth(16)
 meterResizeGrip:SetHeight(16)
 meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -1, 1)
 meterResizeGrip:SetFrameLevel(meter:GetFrameLevel() + 25)
-meterResizeGrip:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonUp")
-
 meterResizeGrip.lines = {}
 for rIdx = 1, 3 do
 	local line = meterResizeGrip:CreateTexture(nil, "OVERLAY")
@@ -304,29 +302,7 @@ for rIdx = 1, 3 do
 	table.insert(meterResizeGrip.lines, line)
 end
 
-meterResizeGrip:SetScript("OnClick", function()
-	if arg1 == "RightButton" then
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.meterWidth = nil
-		BordoUIDB.meterLines = nil
-		BordoUIDB.meterScale = 1.0
-		BordoUIDB.meterPos = nil
-		BordoUIDB.meterIsCustom = nil
-		local settings = Settings()
-		if settings then
-			settings.meterPos = nil
-			settings.meterRight = nil
-			settings.meterBottom = nil
-		end
-		BordoUI_SetMeterScale(1.0)
-		UpdateMeterWidth(WIDTH)
-		seatedOn = nil
-		Fit()
-		if Draw then Draw() end
-		PlaySound("igMainMenuOptionCheckBoxOn")
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter reset to default layout & size.")
-	end
-end)
+-- Left-click drag sizing only: no right-click, no accidental click-reset!
 meterResizeGrip:SetScript("OnMouseDown", function()
 	if arg1 == "LeftButton" then
 		isMeterSizing = true
