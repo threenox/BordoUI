@@ -116,12 +116,17 @@ end
 local function RestorePlace()
 	local settings = Settings()
 	list:ClearAllPoints()
-	if settings.buildLeft and settings.buildTop then
-		list:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", settings.buildLeft, settings.buildTop)
-	elseif SurvivorUITracker and SurvivorUITracker:IsVisible() then
+	local pos = (BordoUIDB and BordoUIDB.buildPos) or (settings and settings.buildPos)
+	if pos and pos.point then
+		list:SetPoint(pos.point, UIParent, pos.relativePoint or pos.point, pos.x, pos.y)
+	elseif (BordoUIDB and BordoUIDB.buildLeft and BordoUIDB.buildTop) or (settings and settings.buildLeft and settings.buildTop) then
+		local bLeft = (BordoUIDB and BordoUIDB.buildLeft) or settings.buildLeft
+		local bTop = (BordoUIDB and BordoUIDB.buildTop) or settings.buildTop
+		list:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", bLeft, bTop)
+	elseif SurvivorUITracker then
 		list:SetPoint("TOPRIGHT", SurvivorUITracker, "BOTTOMRIGHT", 0, -8)
 	else
-		list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -395)
+		list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -368)
 	end
 end
 -- Global export to prevent any nil call errors
@@ -154,6 +159,13 @@ function BordoUI_ResetBuildPosition()
 	if BordoUIDB then
 		BordoUIDB.buildLeft = nil
 		BordoUIDB.buildTop = nil
+		BordoUIDB.buildPos = nil
+	end
+	local settings = Settings()
+	if settings then
+		settings.buildLeft = nil
+		settings.buildTop = nil
+		settings.buildPos = nil
 	end
 	RestorePlace()
 end

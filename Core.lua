@@ -724,6 +724,13 @@ function BordoUI:ToggleMoveMode(enable)
                             BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
                             BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
                         end
+                    elseif ( saveKey == "buildPos" ) then
+                        local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
+                        BordoUIDB.buildPos = pos;
+                        BordoUIDB.buildLeft = math.floor(f:GetLeft() + 0.5);
+                        BordoUIDB.buildTop = math.floor(f:GetTop() + 0.5);
+                        f:ClearAllPoints();
+                        f:SetPoint(pos.point, UIParent, pos.relativePoint, pos.x, pos.y);
                     elseif ( saveKey == "chatPos" ) then
                         local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
                         BordoUIDB.chatPos = pos;
@@ -783,7 +790,10 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.nameplatesFramePos = nil;
     BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -132 };
     BordoUIDB.choiceAdvisorPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -4 };
-    BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 20 };
+    BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
+    BordoUIDB.buildPos = nil;
+    BordoUIDB.buildLeft = nil;
+    BordoUIDB.buildTop = nil;
     BordoUIDB.meterPos = nil;
     BordoUIDB.meterIsCustom = nil;
     BordoUIDB.meterWidth = nil;
@@ -804,7 +814,6 @@ function BordoUI:ResetToDefaultLayout()
     if ( BordoUI.UpdateSCTAnchorVisibility ) then
         BordoUI:UpdateSCTAnchorVisibility();
     end
-    if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = defaultHudPos;
         AZSHelperDB.centerHudPos = defaultHudPos;
@@ -827,10 +836,11 @@ function BordoUI:ResetToDefaultLayout()
     if ( StatsUI and StatsUI.ResetPosition ) then StatsUI:ResetPosition(); end
     if ( TrackerUI and TrackerUI.ResetPosition ) then TrackerUI:ResetPosition(); end
     if ( BordoUI_ResetBuildPosition ) then BordoUI_ResetBuildPosition(); end
+    if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
     if ( BordoUI_ResetPartyPosition ) then BordoUI_ResetPartyPosition(); end
     if ( BordoUI_ChatBox ) then
         BordoUI_ChatBox:ClearAllPoints();
-        BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
+        BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
         if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
     end
     if ( AZSHelper_BossEncounterContainer ) then

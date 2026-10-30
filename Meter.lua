@@ -256,9 +256,27 @@ Fit = function()
 		end
 	end
 
-	-- 2. Default (Clean Install / Reset / Standard Layout): Always bottom-right corner of screen (-12, 40)
-	Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
-	SetLines((BordoUIDB and BordoUIDB.meterLines) or MAX_LINES)
+	-- 2. Default (Clean Install / Reset / Standard Layout): Dock directly underneath SurvivorUIBuild
+	local build = SurvivorUIBuild
+	if not build then
+		Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
+		SetLines((BordoUIDB and BordoUIDB.meterLines) or MAX_LINES)
+		return
+	end
+
+	Seat(build:GetName(), "TOPRIGHT", build, "BOTTOMRIGHT", 0, -10)
+	if BordoUIDB and BordoUIDB.meterLines then
+		SetLines(BordoUIDB.meterLines)
+	else
+		local bBottom = build:GetBottom()
+		if bBottom then
+			local room = bBottom * build:GetEffectiveScale() / meter:GetEffectiveScale() - 10 - 8
+			local fit = math.floor((room - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
+			SetLines(math.max(3, math.min(MAX_LINES, fit)))
+		else
+			SetLines(MAX_LINES)
+		end
+	end
 end
 
 -- Resize Corner Grip (Bottom-Right)

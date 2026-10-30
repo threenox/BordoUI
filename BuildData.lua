@@ -2725,6 +2725,7 @@ local function CanonicalSpellKey(str)
     local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
     return SPELL_CANONICAL_KEYS[clean] or clean;
 end
+BordoUI_CanonicalSpellKey = CanonicalSpellKey;
 
 local function NormalizeIconPath(p)
     if not p then return ""; end

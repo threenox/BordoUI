@@ -1979,6 +1979,80 @@ function AZSHelper:DockChatFrame(cf)
 	end
 end
 
+function AZSHelper:AnchorChatEditBox()
+	local editBox = getglobal("ChatFrameEditBox")
+	if not editBox or not BordoUI_ChatBox then return end
+	editBox:ClearAllPoints()
+	-- Flush directly underneath BordoUI_ChatBox with 0 gap
+	-- 1px overlap on the border so they form a single continuous seamless window
+	editBox:SetPoint("TOPLEFT", BordoUI_ChatBox, "BOTTOMLEFT", 0, 1)
+	editBox:SetPoint("TOPRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", 0, 1)
+	editBox:SetHeight(22)
+	editBox:SetTextInsets(8, 8, 0, 0)
+end
+
+function AZSHelper:SkinChatEditBox()
+	local editBox = getglobal("ChatFrameEditBox")
+	if not editBox then return end
+
+	-- Suppress and hide default Blizzard metallic chrome textures
+	local texNames = {
+		"ChatFrameEditBoxLeft",
+		"ChatFrameEditBoxRight",
+		"ChatFrameEditBoxMid",
+		"ChatFrameEditBoxFocusLeft",
+		"ChatFrameEditBoxFocusRight",
+		"ChatFrameEditBoxFocusMid",
+	}
+	for i = 1, table.getn(texNames) do
+		local tex = getglobal(texNames[i])
+		if tex then
+			tex:SetTexture(nil)
+			tex:Hide()
+			tex.Show = function() end
+		end
+	end
+
+	local regions = { editBox:GetRegions() }
+	for i = 1, table.getn(regions) do
+		local r = regions[i]
+		if r and r.GetObjectType and r:GetObjectType() == "Texture" then
+			local tPath = r:GetTexture()
+			if tPath and (string.find(tPath, "ChatFrame") or string.find(tPath, "UI%-ChatFrame")) then
+				r:SetTexture(nil)
+				r:Hide()
+				r.Show = function() end
+			end
+		end
+	end
+
+	-- Apply modern dark BordoUI backdrop matching BordoUI_ChatBox
+	editBox:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 12,
+		edgeSize = 8,
+		insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+	})
+	editBox:SetBackdropColor(0.04, 0.04, 0.06, 0.90)
+	editBox:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
+
+	-- Hook OnShow if not already hooked to re-anchor flush every time Enter is pressed
+	if not editBox._bordoHooked then
+		editBox._bordoHooked = true
+		local orig_OnShow = editBox:GetScript("OnShow")
+		editBox:SetScript("OnShow", function()
+			if orig_OnShow then orig_OnShow() end
+			if AZSHelper and AZSHelper.AnchorChatEditBox then
+				AZSHelper:AnchorChatEditBox()
+			end
+		end)
+	end
+
+	AZSHelper:AnchorChatEditBox()
+end
+
 function AZSHelper:DockAllChatFrames()
 	if not BordoUI_ChatBox then return end
 	for i = 1, 7 do
@@ -1991,12 +2065,7 @@ function AZSHelper:DockAllChatFrames()
 		ChatFrame1Tab:ClearAllPoints()
 		ChatFrame1Tab:SetPoint("LEFT", BordoUI_ChatTitle, "RIGHT", 8, 0)
 	end
-	local editBox = getglobal("ChatFrameEditBox")
-	if editBox and BordoUI_ChatBox then
-		editBox:ClearAllPoints()
-		editBox:SetPoint("TOPLEFT", BordoUI_ChatBox, "BOTTOMLEFT", 6, -2)
-		editBox:SetPoint("TOPRIGHT", BordoUI_ChatBox, "BOTTOMRIGHT", -6, -2)
-	end
+	AZSHelper:AnchorChatEditBox()
 end
 
 function AZSHelper:SkinChatWindow()
@@ -2008,7 +2077,7 @@ function AZSHelper:SkinChatWindow()
 	local chatBox = CreateFrame("Frame", "BordoUI_ChatBox", UIParent)
 	chatBox:SetWidth(380)
 	chatBox:SetHeight(145)
-	chatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20)
+	chatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26)
 	chatBox:SetFrameStrata("BACKGROUND")
 	chatBox:SetFrameLevel(1)
 	chatBox:SetClampedToScreen(true)
@@ -2190,6 +2259,36 @@ function AZSHelper:SkinChatWindow()
 			end
 		end
 	end
+
+	-- Hook ChatFrame_OpenChat so pressing Enter or / keeps ChatFrameEditBox flush under BordoUI_ChatBox
+	if type(ChatFrame_OpenChat) == "function" and not AZSHelper._OpenChatHooked then
+		AZSHelper._OpenChatHooked = true
+		local orig_ChatFrame_OpenChat = ChatFrame_OpenChat
+		ChatFrame_OpenChat = function(text, chatFrame)
+			if orig_ChatFrame_OpenChat then
+				orig_ChatFrame_OpenChat(text, chatFrame)
+			end
+			if AZSHelper and AZSHelper.AnchorChatEditBox then
+				AZSHelper:AnchorChatEditBox()
+			end
+		end
+	end
+
+	-- Hook ChatEdit_UpdateHeader to ensure Blizzard never re-shows stock metallic chrome textures
+	if type(ChatEdit_UpdateHeader) == "function" and not AZSHelper._EditUpdateHeaderHooked then
+		AZSHelper._EditUpdateHeaderHooked = true
+		local orig_ChatEdit_UpdateHeader = ChatEdit_UpdateHeader
+		ChatEdit_UpdateHeader = function(editBox)
+			if orig_ChatEdit_UpdateHeader then
+				orig_ChatEdit_UpdateHeader(editBox)
+			end
+			if AZSHelper and AZSHelper.SkinChatEditBox then
+				AZSHelper:SkinChatEditBox()
+			end
+		end
+	end
+
+	AZSHelper:SkinChatEditBox()
 end
 -- =========================================================================
 -- 8. MAIN UPDATE LOOPS & EVENT HANDLING
