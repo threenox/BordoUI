@@ -1235,10 +1235,6 @@ function BordoUI:CreateDamageNumbersWindow()
     closeBtn:SetScript("OnLeave", function() closeTxt:SetTextColor(0.7, 0.7, 0.7); end);
     closeBtn:SetScript("OnClick", function() dmgFrame:Hide(); PlaySound("igMainMenuClose"); end);
     
-    if ( BordoUI and BordoUI.AttachLockButton ) then
-        BordoUI:AttachLockButton(dmgFrame, "TOPRIGHT", dmgFrame, "TOPRIGHT", -26, -5);
-    end
-    
     -- Generic Click Handler routing to Standard or SCT table
     local function OnOptionClick(group, val)
         local s = BordoUI:GetDamageSettings();

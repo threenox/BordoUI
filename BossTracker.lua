@@ -253,10 +253,6 @@ headerBar:SetScript("OnMouseWheel", function()
     frame:SetScale(cur);
 end);
 
-if ( BordoUI and BordoUI.AttachLockButton ) then
-    BordoUI:AttachLockButton(frame, "TOPRIGHT", headerBar, "TOPRIGHT", -6, -4);
-end
-
 -- 1. Zone Name (Yellow)
 local zoneText = headerBar:CreateFontString(nil, "OVERLAY");
 zoneText:SetFont(FONT_PATH, 11, "OUTLINE");

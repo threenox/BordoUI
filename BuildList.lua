@@ -178,9 +178,6 @@ list.title:SetText("Build")
 list.count = list:CreateFontString(nil, "OVERLAY")
 list.count:SetFont(SurvivorUI_FONT, 10 + FONT_BUMP, "OUTLINE")
 list.count:SetPoint("TOPRIGHT", list, "TOPRIGHT", -7, -7)
-if ( BordoUI and BordoUI.AttachLockButton ) then
-    BordoUI:AttachLockButton(list, "TOPRIGHT", list, "TOPRIGHT", -26, -5);
-end
 ------------------------------------------------------------------------------
 -- The columns at the right of each spell: its range and its cooldown (each
 -- as chosen: Build list tab) and its rank, each under its name in the header
@@ -1310,7 +1307,8 @@ watcher:SetScript("OnUpdate", function()
 		return
 	end
 	elapsed = 0
-	if Settings().buildList and Running() then
+	local isEnabled = Settings().buildList and (not BordoUI or not BordoUI.IsWindowEnabled or BordoUI:IsWindowEnabled("build"))
+	if isEnabled and Running() then
 		Draw()
 		DrawGear()
 		if not list:IsShown() then
@@ -1420,6 +1418,9 @@ end
 function SurvivorUI_ToggleBuild()
 	local settings = Settings()
 	settings.buildList = not settings.buildList
+	if BordoUI and BordoUI.SetWindowEnabled then
+		BordoUI:SetWindowEnabled("build", settings.buildList)
+	end
 	ApplyGameHud()
 	DEFAULT_CHAT_FRAME:AddMessage("Survivor UI: "..(settings.buildList
 		and (settings.gameBuildToo and "build list shown, and the Default row of spells stays with it."

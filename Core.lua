@@ -5,30 +5,35 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.2.24";
--- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
+BordoUI.version = "2.8.16";
+-- Unit & Mob Tooltip: Anchor world/unit/add tooltips to bottom-right (or custom position)
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
 tipAnchor:SetHeight(80);
-tipAnchor:SetPoint("BOTTOMLEFT", BordoUI_ChatBox or ChatFrame1 or UIParent, "BOTTOMRIGHT", 12, 0);
+tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
 tipAnchor:SetMovable(true);
 tipAnchor:SetClampedToScreen(true);
 tipAnchor:EnableMouse(false);
 BordoUI.tipAnchor = tipAnchor;
 local function PlaceTooltip(tooltip)
+	if ( not tooltip ) then return; end
+	if ( BordoUI and BordoUI.IsWindowEnabled and not BordoUI:IsWindowEnabled("tooltip") ) then
+		tooltip:Hide();
+		return;
+	end
 	tooltip:ClearAllPoints();
 	if ( BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point ) then
 		BordoUI:RestorePosition(tooltip, BordoUIDB.tooltipPos);
-	elseif ( BordoUI_ChatBox ) then
-		tooltip:SetPoint("BOTTOMLEFT", BordoUI_ChatBox, "BOTTOMRIGHT", 12, 0);
-	elseif ( ChatFrame1 ) then
-		tooltip:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
 	else
-		tooltip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
+		tooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
 	end
 end
 local orig_GameTooltip_SetDefaultAnchor = GameTooltip_SetDefaultAnchor;
 function GameTooltip_SetDefaultAnchor(tooltip, parent)
+	if ( BordoUI and BordoUI.IsWindowEnabled and not BordoUI:IsWindowEnabled("tooltip") ) then
+		tooltip:Hide();
+		return;
+	end
 	tooltip:SetOwner(parent, "ANCHOR_NONE");
 	PlaceTooltip(tooltip);
 	tooltip.default = 1;
@@ -97,6 +102,20 @@ local function InitDB()
     end
     if ( not BordoUIDB.deathRecapPos or (BordoUIDB.deathRecapPos.x and BordoUIDB.deathRecapPos.x > -250) ) then
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
+    end
+    if ( BordoUIDB.itemCache ) then
+        for k, entry in pairs(BordoUIDB.itemCache) do
+            if ( entry and entry.tex ) then
+                local lTex = string.lower(entry.tex);
+                if ( string.find(lTex, "inv_jewelry_ring_40") ) then
+                    entry.tex = "Interface\\Icons\\INV_Jewelry_Ring_35";
+                elseif ( string.find(lTex, "inv_jewelry_ring_49") and not string.find(lTex, "naxxramas") ) then
+                    entry.tex = "Interface\\Icons\\INV_Jewelry_Ring_49Naxxramas";
+                elseif ( string.find(lTex, "inv_jewelry_ring_51") and not string.find(lTex, "naxxramas") ) then
+                    entry.tex = "Interface\\Icons\\INV_Jewelry_Ring_51Naxxramas";
+                end
+            end
+        end
     end
 end
 -- Formatting Utilities
@@ -194,40 +213,17 @@ end
 -- =========================================================================
 BordoUI.LockButtons = {};
 function BordoUI:UpdateAllLockButtons()
-    local isLocked = (BordoUIDB and BordoUIDB.locked);
+    -- Individual window lock icons removed per user request.
+    -- Moving and locking is centrally controlled via /bordo, /lock, /unlock.
     for i = 1, table.getn(BordoUI.LockButtons) do
-        local btn = BordoUI.LockButtons[i];
-        if btn and btn.tex then
-            if isLocked then
-                btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Lock.tga");
-                btn.tex:SetVertexColor(0.85, 0.85, 0.85, 0.85);
-            else
-                btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Unlock.tga");
-                btn.tex:SetVertexColor(0.30, 1.00, 0.40, 1.00);
-            end
+        if ( BordoUI.LockButtons[i] ) then
+            BordoUI.LockButtons[i]:Hide();
         end
     end
 end
 function BordoUI:AttachLockButton(parent, anchorPoint, relFrame, relPoint, x, y)
-    if not parent then return nil; end
-    local btn = CreateFrame("Button", nil, parent);
-    btn:SetWidth(15);
-    btn:SetHeight(15);
-    btn:SetPoint(anchorPoint or "TOPRIGHT", relFrame or parent, relPoint or "TOPRIGHT", x or -4, y or -4);
-    btn:SetFrameLevel((parent:GetFrameLevel() or 5) + 12);
-    
-    local tex = btn:CreateTexture(nil, "OVERLAY");
-    tex:SetAllPoints(btn);
-    btn.tex = tex;
-    
-    btn:SetScript("OnClick", function()
-        BordoUI:ToggleLock();
-    end);
-    
-    
-    table.insert(BordoUI.LockButtons, btn);
-    BordoUI:UpdateAllLockButtons();
-    return btn;
+    -- Individual window lock icons removed per user request.
+    return nil;
 end
 -- Event Listener Frame
 local eventFrame = CreateFrame("Frame", "BordoUI_CoreEventFrame");
@@ -239,6 +235,9 @@ eventFrame:SetScript("OnEvent", function()
         if ( BordoUI.UpdateAllLockButtons ) then
             BordoUI:UpdateAllLockButtons();
         end
+        if ( BordoUI.ApplyAllWindowScales ) then
+            BordoUI:ApplyAllWindowScales();
+        end
         if ( event == "PLAYER_ENTERING_WORLD" ) then
             BordoUIDB.locked = true;
             BordoUI.moveModeActive = false;
@@ -248,10 +247,15 @@ eventFrame:SetScript("OnEvent", function()
             if ( BordoUI.MoveOverlays ) then
                 for i = 1, table.getn(BordoUI.MoveOverlays) do
                     if ( BordoUI.MoveOverlays[i] ) then
+                        if ( BordoUI.MoveOverlays[i].StopDrag ) then
+                            BordoUI.MoveOverlays[i]:StopDrag();
+                        end
                         BordoUI.MoveOverlays[i]:Hide();
                     end
                 end
             end
+            if ( BordoUI_SnapLineH ) then BordoUI_SnapLineH:Hide(); end
+            if ( BordoUI_SnapLineV ) then BordoUI_SnapLineV:Hide(); end
             if ( BordoUI.UpdateSCTAnchorVisibility ) then
                 BordoUI:UpdateSCTAnchorVisibility();
             end
@@ -471,6 +475,10 @@ SlashCmdList["BORDOU"] = function(msg)
         elseif ( SurvivorUI_ToggleMeter ) then
             SurvivorUI_ToggleMeter();
         end
+    elseif ( cmd == "partymeter" or cmd == "partydps" ) then
+        if BordoUI_TogglePartyMeter then
+            BordoUI_TogglePartyMeter();
+        end
     elseif ( cmd == "reset" ) then
         BordoUI:ResetToDefaultLayout();
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
@@ -502,10 +510,13 @@ SlashCmdList["BORDOMETER"] = function(msg)
             BordoUI_SetMeterScale(num);
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter scale set to " .. math.floor(num * 100 + 0.5) .. "%.");
         end
+    elseif ( sub == "party" or sub == "partymeter" ) then
+        if BordoUI_TogglePartyMeter then BordoUI_TogglePartyMeter(); end
     elseif ( sub == "reset" ) then
         if BordoUI_ResetMeterPosition then BordoUI_ResetMeterPosition(); end
+        if BordoUI_ResetPartyMeterPosition then BordoUI_ResetPartyMeterPosition(); end
         if BordoUI_ResetMeter then BordoUI_ResetMeter(); end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage Meter position and data reset.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Damage & Party Meter positions and data reset.");
     else
         if BordoUI_ToggleMeter then
             BordoUI_ToggleMeter();
@@ -580,15 +591,67 @@ function SurvivorUI_LairMarkName(mark)
     return mark and MARK_NAMES[mark] or nil;
 end
 -- =========================================================================
--- Visual Move Mode & Universal Layout System
+-- Visual Move Mode & Universal Layout System with Magnetic Snapping
 -- =========================================================================
 BordoUI.MoveOverlays = {};
-local function CreateMoveOverlay(targetFrame, labelText, saveFunc)
+
+local function EnsureSnapLines()
+    if ( not BordoUI_SnapLineH ) then
+        local lineH = CreateFrame("Frame", "BordoUI_SnapLineH", UIParent);
+        lineH:SetFrameStrata("TOOLTIP");
+        lineH:SetFrameLevel(120);
+        lineH:SetHeight(2);
+        local texH = lineH:CreateTexture(nil, "OVERLAY");
+        texH:SetAllPoints(lineH);
+        texH:SetTexture(0.0, 0.90, 1.0, 0.85);
+        lineH.tex = texH;
+        lineH:Hide();
+    end
+    if ( not BordoUI_SnapLineV ) then
+        local lineV = CreateFrame("Frame", "BordoUI_SnapLineV", UIParent);
+        lineV:SetFrameStrata("TOOLTIP");
+        lineV:SetFrameLevel(120);
+        lineV:SetWidth(2);
+        local texV = lineV:CreateTexture(nil, "OVERLAY");
+        texV:SetAllPoints(lineV);
+        texV:SetTexture(0.0, 0.90, 1.0, 0.85);
+        lineV.tex = texV;
+        lineV:Hide();
+    end
+end
+
+local function GetFrameUIRect(f)
+    if ( not f or not f:IsVisible() ) then return nil; end
+    local left = f:GetLeft();
+    local bottom = f:GetBottom();
+    local right = f:GetRight();
+    local top = f:GetTop();
+    if ( not left or not bottom or not right or not top ) then return nil; end
+    local effScale = f:GetEffectiveScale() or 1;
+    local uScale = UIParent:GetEffectiveScale() or 1;
+    local ratio = effScale / uScale;
+    return {
+        left   = left * ratio,
+        right  = right * ratio,
+        bottom = bottom * ratio,
+        top    = top * ratio,
+        width  = (right - left) * ratio,
+        height = (top - bottom) * ratio,
+        midX   = (left + right) * 0.5 * ratio,
+        midY   = (bottom + top) * 0.5 * ratio,
+    };
+end
+
+local function CreateMoveOverlay(targetFrame, labelText, saveFunc, scaleKey, targetKey)
     if ( not targetFrame ) then return nil; end
     local overlay = CreateFrame("Button", nil, UIParent);
     overlay:SetFrameStrata("TOOLTIP");
     overlay:SetFrameLevel(100);
     overlay:SetAllPoints(targetFrame);
+    overlay.targetFrame = targetFrame;
+    overlay.labelText = labelText;
+    overlay.scaleKey = scaleKey;
+    overlay.targetKey = targetKey;
     
     overlay:SetBackdrop({
         bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
@@ -608,18 +671,636 @@ local function CreateMoveOverlay(targetFrame, labelText, saveFunc)
     overlay.text = txt;
     overlay:EnableMouse(true);
     overlay:RegisterForDrag("LeftButton");
-    overlay:SetScript("OnDragStart", function()
-        targetFrame:StartMoving();
-    end);
-    overlay:SetScript("OnDragStop", function()
-        targetFrame:StopMovingOrSizing();
+
+    -- Corner Resize Grip (Bottom-Right) - Blue 3-Line Icon on Every Window in /bordo
+    local grip = CreateFrame("Button", nil, overlay);
+    grip:SetWidth(20);
+    grip:SetHeight(20);
+    grip:SetPoint("BOTTOMRIGHT", overlay, "BOTTOMRIGHT", -1, 1);
+    grip:SetFrameLevel(overlay:GetFrameLevel() + 20);
+    grip:EnableMouse(true);
+    grip:EnableMouseWheel(true);
+    grip:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+    grip.lines = {};
+    for rIdx = 1, 3 do
+        local line = grip:CreateTexture(nil, "OVERLAY");
+        line:SetTexture("Interface\\ChatFrame\\ChatFrameBackground");
+        line:SetVertexColor(0.0, 0.75, 1.0, 0.90);
+        line:SetHeight(2);
+        line:SetWidth(4 * rIdx + 2);
+        line:SetPoint("BOTTOMRIGHT", grip, "BOTTOMRIGHT", -1, (rIdx - 1) * 4 + 1);
+        table.insert(grip.lines, line);
+    end
+    overlay.resizeGrip = grip;
+
+    local function ApplyWindowScale(newScale, origRect)
+        local target = overlay.targetFrame;
+        if ( not target or not newScale or not origRect ) then return; end
+
+        target:SetScale(newScale);
+
+        local newX = origRect.left / newScale;
+        local newY = origRect.top / newScale;
+        target:ClearAllPoints();
+        target:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(newX + 0.5), math.floor(newY + 0.5));
+
+        if ( (target == BordoUI_MeterFrame or target == SurvivorUIMeter) and BordoUI_PartyMeterFrame ) then
+            BordoUI_PartyMeterFrame:SetScale(newScale);
+        end
+
         overlay:ClearAllPoints();
-        overlay:SetAllPoints(targetFrame);
-        if ( saveFunc ) then saveFunc(targetFrame); end
+        overlay:SetAllPoints(target);
+        local pct = math.floor(newScale * 100 + 0.5);
+        overlay.text:SetText(string.format("%s (%d%%)", overlay.labelText, pct));
+    end
+
+    grip.StopResize = function(self)
+        if ( not self.isResizing ) then return; end
+        self.isResizing = false;
+        overlay:SetBackdropBorderColor(0.20, 0.85, 1.00, 1.00);
+        overlay.text:SetText(overlay.labelText);
+        overlay:ClearAllPoints();
+        overlay:SetAllPoints(overlay.targetFrame);
+
+        BordoUIDB = BordoUIDB or {};
+        if ( overlay.targetKey == "meterPos" ) then
+            if ( BordoUI_SaveMeterPlace ) then BordoUI_SaveMeterPlace(); end
+        elseif ( overlay.scaleKey ) then
+            local curScale = overlay.targetFrame:GetScale() or 1.0;
+            BordoUIDB[overlay.scaleKey] = curScale;
+        end
+        if ( saveFunc ) then
+            saveFunc(overlay.targetFrame);
+        end
+        if ( PlaySound ) then PlaySound("igMainMenuOptionCheckBoxOn"); end
+    end;
+
+    grip:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+        GameTooltip:ClearLines();
+        GameTooltip:AddLine("|cff00ccff" .. overlay.labelText .. " Size|r", 1, 1, 1);
+        local curPct = math.floor((overlay.targetFrame:GetScale() or 1.0) * 100 + 0.5);
+        GameTooltip:AddLine(string.format("Current Scale: |cff55ff55%d%%|r", curPct), 0.9, 0.9, 0.9);
+        GameTooltip:AddLine(" ", 1, 1, 1);
+        GameTooltip:AddLine("|cffffd100Mouse Wheel:|r Scale +/- 5%", 0.8, 0.8, 0.8);
+        GameTooltip:AddLine("|cffffd100Left-Click:|r Scale -10%", 0.8, 0.8, 0.8);
+        GameTooltip:AddLine("|cffffd100Right-Click:|r Scale +10%", 0.8, 0.8, 0.8);
+        GameTooltip:AddLine("|cffffd100Drag Corner:|r Smooth scale in place", 0.8, 0.8, 0.8);
+        GameTooltip:Show();
+        for i = 1, table.getn(this.lines) do
+            this.lines[i]:SetVertexColor(0.25, 1.00, 0.40, 1.00);
+        end
     end);
+
+    grip:SetScript("OnLeave", function()
+        GameTooltip:Hide();
+        for i = 1, table.getn(this.lines) do
+            this.lines[i]:SetVertexColor(0.0, 0.75, 1.0, 0.90);
+        end
+    end);
+
+    grip:SetScript("OnMouseWheel", function()
+        local delta = arg1;
+        local target = overlay.targetFrame;
+        if ( not target ) then return; end
+        local curRect = GetFrameUIRect(target);
+        if ( not curRect ) then return; end
+
+        if ( overlay.targetKey == "meterPos" and (target == BordoUI_MeterFrame or target == SurvivorUIMeter) ) then
+            local curLines = (BordoUIDB and BordoUIDB.meterLines) or 6;
+            local newLines = math.max(3, math.min(10, curLines + delta));
+            if ( BordoUI_SetMeterLines ) then BordoUI_SetMeterLines(newLines); end
+            BordoUIDB = BordoUIDB or {};
+            BordoUIDB.meterLines = newLines;
+
+            target:ClearAllPoints();
+            target:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(curRect.left + 0.5), math.floor(curRect.top + 0.5));
+
+            overlay:ClearAllPoints();
+            overlay:SetAllPoints(target);
+            overlay.text:SetText(string.format("Damage Meter (%d lines)", newLines));
+            if ( Draw ) then Draw(); end
+            if ( BordoUI_DrawPartyMeter ) then BordoUI_DrawPartyMeter(); end
+            if ( BordoUI_SaveMeterPlace ) then BordoUI_SaveMeterPlace(); end
+            PlaySound("igMainMenuOptionCheckBoxOn");
+            return;
+        end
+
+        local curScale = target:GetScale() or 1.0;
+        local step = (delta > 0) and 0.05 or -0.05;
+        local newScale = math.max(0.50, math.min(1.80, math.floor((curScale + step) * 100 + 0.5) / 100));
+
+        ApplyWindowScale(newScale, curRect);
+
+        BordoUIDB = BordoUIDB or {};
+        if ( overlay.scaleKey ) then
+            BordoUIDB[overlay.scaleKey] = newScale;
+        end
+        if ( saveFunc ) then
+            saveFunc(target);
+        end
+        PlaySound("igMainMenuOptionCheckBoxOn");
+    end);
+
+    grip:SetScript("OnClick", function()
+        if ( this.hasDragged ) then return; end
+        local target = overlay.targetFrame;
+        if ( not target ) then return; end
+        local curRect = GetFrameUIRect(target);
+        if ( not curRect ) then return; end
+
+        if ( overlay.targetKey == "meterPos" and (target == BordoUI_MeterFrame or target == SurvivorUIMeter) ) then
+            local curLines = (BordoUIDB and BordoUIDB.meterLines) or 6;
+            local lineStep = (arg1 == "RightButton") and 1 or -1;
+            local newLines = math.max(3, math.min(10, curLines + lineStep));
+            if ( BordoUI_SetMeterLines ) then BordoUI_SetMeterLines(newLines); end
+            BordoUIDB = BordoUIDB or {};
+            BordoUIDB.meterLines = newLines;
+
+            target:ClearAllPoints();
+            target:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(curRect.left + 0.5), math.floor(curRect.top + 0.5));
+
+            overlay:ClearAllPoints();
+            overlay:SetAllPoints(target);
+            overlay.text:SetText(string.format("Damage Meter (%d lines)", newLines));
+            if ( Draw ) then Draw(); end
+            if ( BordoUI_DrawPartyMeter ) then BordoUI_DrawPartyMeter(); end
+            if ( BordoUI_SaveMeterPlace ) then BordoUI_SaveMeterPlace(); end
+            PlaySound("igMainMenuOptionCheckBoxOn");
+            return;
+        end
+
+        local step = (arg1 == "RightButton") and 0.10 or -0.10;
+        local curScale = target:GetScale() or 1.0;
+        local newScale = math.max(0.50, math.min(1.80, math.floor((curScale + step) * 100 + 0.5) / 100));
+
+        ApplyWindowScale(newScale, curRect);
+
+        BordoUIDB = BordoUIDB or {};
+        if ( overlay.scaleKey ) then
+            BordoUIDB[overlay.scaleKey] = newScale;
+        end
+        if ( saveFunc ) then
+            saveFunc(target);
+        end
+        PlaySound("igMainMenuOptionCheckBoxOn");
+    end);
+
+    grip:SetScript("OnMouseDown", function()
+        if ( arg1 == "LeftButton" ) then
+            local uScale = UIParent:GetEffectiveScale() or 1;
+            local cx, cy = GetCursorPosition();
+            cx = cx / uScale;
+            cy = cy / uScale;
+
+            local curRect = GetFrameUIRect(overlay.targetFrame);
+            if ( not curRect ) then return; end
+
+            this.isResizing = true;
+            this.hasDragged = false;
+            this.startCursorX = cx;
+            this.startCursorY = cy;
+            this.origRect = curRect;
+            this.origScale = overlay.targetFrame:GetScale() or 1.0;
+            
+            local dx = cx - curRect.left;
+            local dy = curRect.top - cy;
+            local dist = math.sqrt(dx * dx + dy * dy);
+            this.origDist = math.max(10, dist);
+
+            overlay:SetBackdropBorderColor(0.0, 1.0, 0.5, 1.0);
+        end
+    end);
+
+    grip:SetScript("OnMouseUp", function()
+        if ( this.isResizing ) then
+            this:StopResize();
+        end
+    end);
+
+    grip:SetScript("OnUpdate", function()
+        if ( not this.isResizing ) then return; end
+
+        local uScale = UIParent:GetEffectiveScale() or 1;
+        local cx, cy = GetCursorPosition();
+        cx = cx / uScale;
+        cy = cy / uScale;
+
+        local moveDist = math.abs(cx - this.startCursorX) + math.abs(cy - this.startCursorY);
+        if ( moveDist > 3 ) then
+            this.hasDragged = true;
+        end
+        if ( not this.hasDragged ) then return; end
+
+        local target = overlay.targetFrame;
+        local targetKey = overlay.targetKey;
+
+        if ( targetKey == "meterPos" and (target == BordoUI_MeterFrame or target == SurvivorUIMeter) ) then
+            local newW = math.max(160, math.min(480, this.origRect.width + (cx - this.startCursorX)));
+            local newH = math.max(50, math.min(600, this.origRect.height - (cy - this.startCursorY)));
+            if ( BordoUI_UpdateMeterWidth ) then
+                BordoUI_UpdateMeterWidth(newW - 8);
+            end
+            local fitLines = math.floor((newH - 36) / 20);
+            fitLines = math.max(3, math.min(10, fitLines));
+            if ( BordoUI_SetMeterLines ) then
+                BordoUI_SetMeterLines(fitLines);
+            end
+            BordoUIDB = BordoUIDB or {};
+            BordoUIDB.meterWidth = newW;
+            BordoUIDB.meterLines = fitLines;
+            
+            target:ClearAllPoints();
+            target:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(this.origRect.left + 0.5), math.floor(this.origRect.top + 0.5));
+            
+            overlay:ClearAllPoints();
+            overlay:SetAllPoints(target);
+            overlay.text:SetText(string.format("Damage Meter (%d lines)", fitLines));
+            if ( Draw ) then Draw(); end
+            if ( BordoUI_DrawPartyMeter ) then BordoUI_DrawPartyMeter(); end
+        else
+            local dx = cx - this.origRect.left;
+            local dy = this.origRect.top - cy;
+            local curDist = math.sqrt(dx * dx + dy * dy);
+            local scaleFactor = curDist / this.origDist;
+            local minS = 0.50;
+            local maxS = 1.80;
+            local newScale = math.max(minS, math.min(maxS, this.origScale * scaleFactor));
+            newScale = math.floor(newScale * 50 + 0.5) / 50;
+
+            ApplyWindowScale(newScale, this.origRect);
+        end
+    end);
+
+    overlay.StopDrag = function(self)
+        if ( self.resizeGrip and self.resizeGrip.isResizing ) then
+            self.resizeGrip:StopResize();
+        end
+        if ( not self.isDragging ) then return; end
+        self.isDragging = false;
+        self.lastSnapped = false;
+        if ( BordoUI_SnapLineH ) then BordoUI_SnapLineH:Hide(); end
+        if ( BordoUI_SnapLineV ) then BordoUI_SnapLineV:Hide(); end
+        self:SetBackdropBorderColor(0.20, 0.85, 1.00, 1.00);
+        self.text:SetText(self.labelText);
+        self:ClearAllPoints();
+        self:SetAllPoints(self.targetFrame);
+        if ( saveFunc ) then
+            saveFunc(self.targetFrame);
+        end
+    end;
+
+    overlay:SetScript("OnDragStart", function()
+        if ( this.resizeGrip and this.resizeGrip.isResizing ) then return; end
+        local cx, cy = GetCursorPosition();
+        local uScale = UIParent:GetEffectiveScale() or 1;
+        cx = cx / uScale;
+        cy = cy / uScale;
+        
+        local curRect = GetFrameUIRect(this.targetFrame);
+        if ( not curRect ) then return; end
+        this.dragOffsetX = cx - curRect.left;
+        this.dragOffsetY = cy - curRect.bottom;
+        this.isDragging = true;
+        this.lastSnapped = false;
+        EnsureSnapLines();
+    end);
+
+    overlay:SetScript("OnDragStop", function()
+        this:StopDrag();
+    end);
+    overlay:SetScript("OnMouseUp", function()
+        if ( not arg1 or arg1 == "LeftButton" ) then
+            this:StopDrag();
+        end
+    end);
+
+    overlay:SetScript("OnUpdate", function()
+        if ( not this.isDragging ) then return; end
+
+        local uScale = UIParent:GetEffectiveScale() or 1;
+        local cx, cy = GetCursorPosition();
+        cx = cx / uScale;
+        cy = cy / uScale;
+
+        local curRect = GetFrameUIRect(this.targetFrame);
+        local w = curRect and curRect.width or (this.targetFrame:GetWidth() or 100);
+        local h = curRect and curRect.height or (this.targetFrame:GetHeight() or 50);
+
+        local rawLeft = cx - this.dragOffsetX;
+        local rawBottom = cy - this.dragOffsetY;
+
+        -- True monitor width and height in UIParent coordinate points
+        local screenW = UIParent:GetRight();
+        if ( not screenW or screenW <= 0 ) then
+            screenW = (GetScreenWidth and GetScreenWidth() / uScale) or (UIParent:GetWidth() or 1024);
+        end
+        local screenH = UIParent:GetTop();
+        if ( not screenH or screenH <= 0 ) then
+            screenH = (GetScreenHeight and GetScreenHeight() / uScale) or (UIParent:GetHeight() or 768);
+        end
+        if ( GetScreenWidth ) then
+            local sw = GetScreenWidth() / uScale;
+            if ( sw > screenW ) then screenW = sw; end
+        end
+        if ( GetScreenHeight ) then
+            local sh = GetScreenHeight() / uScale;
+            if ( sh > screenH ) then screenH = sh; end
+        end
+
+        rawLeft = math.max(0, math.min(rawLeft, screenW - w));
+        rawBottom = math.max(0, math.min(rawBottom, screenH - h));
+
+        local rawRight = rawLeft + w;
+        local rawTop = rawBottom + h;
+        local rawMidX = rawLeft + w * 0.5;
+        local rawMidY = rawBottom + h * 0.5;
+
+        local snapLeft = rawLeft;
+        local snapBottom = rawBottom;
+        local isSnappedX = false;
+        local isSnappedY = false;
+        local guideX = nil;
+        local guideY = nil;
+
+        if ( not IsShiftKeyDown() ) then
+            local SNAP_DIST = 14;
+            local bestDiffX = SNAP_DIST;
+            local bestDiffY = SNAP_DIST;
+
+            local targets = BordoUI.RegisteredTargets or {};
+            for j = 1, table.getn(targets) do
+                local tDef = targets[j];
+                local other = tDef and tDef.frame;
+                local overlayJ = BordoUI.MoveOverlays and BordoUI.MoveOverlays[j];
+                local isEnabled = (not tDef) or (not tDef.windowKey) or (not BordoUI.IsWindowEnabled) or BordoUI:IsWindowEnabled(tDef.windowKey);
+                if ( other and other ~= this.targetFrame and isEnabled and overlayJ and overlayJ:IsShown() ) then
+                    local oR = GetFrameUIRect(overlayJ) or GetFrameUIRect(other);
+                    if ( oR and oR.width > 5 and oR.height > 5 ) then
+                        local yOverlap = not (rawTop < oR.bottom - 40 or rawBottom > oR.top + 40);
+                        if ( yOverlap ) then
+                            -- Adjacent Right (touching left edge to other right edge, 0px)
+                            local d = math.abs(rawLeft - oR.right);
+                            if ( d < bestDiffX ) then
+                                bestDiffX = d;
+                                snapLeft = oR.right;
+                                guideX = oR.right;
+                                isSnappedX = true;
+                            end
+                            -- Adjacent Right with 2px gap
+                            d = math.abs(rawLeft - (oR.right + 2));
+                            if ( d < bestDiffX ) then
+                                bestDiffX = d;
+                                snapLeft = oR.right + 2;
+                                guideX = oR.right + 2;
+                                isSnappedX = true;
+                            end
+                            -- Adjacent Left (touching right edge to other left edge, 0px)
+                            d = math.abs(rawRight - oR.left);
+                            if ( d < bestDiffX ) then
+                                bestDiffX = d;
+                                snapLeft = oR.left - w;
+                                guideX = oR.left;
+                                isSnappedX = true;
+                            end
+                            -- Adjacent Left with 2px gap
+                            d = math.abs(rawRight - (oR.left - 2));
+                            if ( d < bestDiffX ) then
+                                bestDiffX = d;
+                                snapLeft = oR.left - 2 - w;
+                                guideX = oR.left - 2;
+                                isSnappedX = true;
+                            end
+                        end
+
+                        local yNear = not (rawTop < oR.bottom - 100 or rawBottom > oR.top + 100);
+                        if ( yNear ) then
+                            -- Flush Left & Flush Right
+                            local dFL = math.abs(rawLeft - oR.left);
+                            if ( dFL < bestDiffX ) then
+                                bestDiffX = dFL;
+                                snapLeft = oR.left;
+                                guideX = oR.left;
+                                isSnappedX = true;
+                            end
+                            local dFR = math.abs(rawRight - oR.right);
+                            if ( dFR < bestDiffX ) then
+                                bestDiffX = dFR;
+                                snapLeft = oR.right - w;
+                                guideX = oR.right;
+                                isSnappedX = true;
+                            end
+                            -- Center X alignment
+                            local dCX = math.abs(rawMidX - oR.midX);
+                            if ( dCX < bestDiffX ) then
+                                bestDiffX = dCX;
+                                snapLeft = oR.midX - w * 0.5;
+                                guideX = oR.midX;
+                                isSnappedX = true;
+                            end
+                        end
+
+                        local xOverlap = not (rawRight < oR.left - 40 or rawLeft > oR.right + 40);
+                        if ( xOverlap ) then
+                            -- Adjacent Top (touching bottom edge to other top edge, 0px)
+                            local d = math.abs(rawBottom - oR.top);
+                            if ( d < bestDiffY ) then
+                                bestDiffY = d;
+                                snapBottom = oR.top;
+                                guideY = oR.top;
+                                isSnappedY = true;
+                            end
+                            -- Adjacent Top with 2px gap
+                            d = math.abs(rawBottom - (oR.top + 2));
+                            if ( d < bestDiffY ) then
+                                bestDiffY = d;
+                                snapBottom = oR.top + 2;
+                                guideY = oR.top + 2;
+                                isSnappedY = true;
+                            end
+                            -- Adjacent Bottom (touching top edge to other bottom edge, 0px)
+                            d = math.abs(rawTop - oR.bottom);
+                            if ( d < bestDiffY ) then
+                                bestDiffY = d;
+                                snapBottom = oR.bottom - h;
+                                guideY = oR.bottom;
+                                isSnappedY = true;
+                            end
+                            -- Adjacent Bottom with 2px gap
+                            d = math.abs(rawTop - (oR.bottom - 2));
+                            if ( d < bestDiffY ) then
+                                bestDiffY = d;
+                                snapBottom = oR.bottom - 2 - h;
+                                guideY = oR.bottom - 2;
+                                isSnappedY = true;
+                            end
+                        end
+
+                        local xNear = not (rawRight < oR.left - 100 or rawLeft > oR.right + 100);
+                        if ( xNear ) then
+                            -- Flush Bottom & Flush Top
+                            local dFB = math.abs(rawBottom - oR.bottom);
+                            if ( dFB < bestDiffY ) then
+                                bestDiffY = dFB;
+                                snapBottom = oR.bottom;
+                                guideY = oR.bottom;
+                                isSnappedY = true;
+                            end
+                            local dFT = math.abs(rawTop - oR.top);
+                            if ( dFT < bestDiffY ) then
+                                bestDiffY = dFT;
+                                snapBottom = oR.top - h;
+                                guideY = oR.top;
+                                isSnappedY = true;
+                            end
+                            -- Center Y alignment
+                            local dCY = math.abs(rawMidY - oR.midY);
+                            if ( dCY < bestDiffY ) then
+                                bestDiffY = dCY;
+                                snapBottom = oR.midY - h * 0.5;
+                                guideY = oR.midY;
+                                isSnappedY = true;
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Screen Edges and Center Axes
+            local dScrL0 = math.abs(rawLeft - 0);
+            if ( dScrL0 < bestDiffX ) then
+                bestDiffX = dScrL0;
+                snapLeft = 0;
+                guideX = 0;
+                isSnappedX = true;
+            end
+            local dScrL12 = math.abs(rawLeft - 12);
+            if ( dScrL12 < bestDiffX ) then
+                bestDiffX = dScrL12;
+                snapLeft = 12;
+                guideX = 12;
+                isSnappedX = true;
+            end
+            local dScrR0 = math.abs(rawRight - screenW);
+            if ( dScrR0 < bestDiffX ) then
+                bestDiffX = dScrR0;
+                snapLeft = screenW - w;
+                guideX = screenW;
+                isSnappedX = true;
+            end
+            local dScrR12 = math.abs(rawRight - (screenW - 12));
+            if ( dScrR12 < bestDiffX ) then
+                bestDiffX = dScrR12;
+                snapLeft = screenW - 12 - w;
+                guideX = screenW - 12;
+                isSnappedX = true;
+            end
+            local dScrMidX = math.abs(rawMidX - (screenW * 0.5));
+            if ( dScrMidX < bestDiffX ) then
+                bestDiffX = dScrMidX;
+                snapLeft = (screenW - w) * 0.5;
+                guideX = screenW * 0.5;
+                isSnappedX = true;
+            end
+
+            local dScrB0 = math.abs(rawBottom - 0);
+            if ( dScrB0 < bestDiffY ) then
+                bestDiffY = dScrB0;
+                snapBottom = 0;
+                guideY = 0;
+                isSnappedY = true;
+            end
+            local dScrB12 = math.abs(rawBottom - 12);
+            if ( dScrB12 < bestDiffY ) then
+                bestDiffY = dScrB12;
+                snapBottom = 12;
+                guideY = 12;
+                isSnappedY = true;
+            end
+            local dScrB26 = math.abs(rawBottom - 26);
+            if ( dScrB26 < bestDiffY ) then
+                bestDiffY = dScrB26;
+                snapBottom = 26;
+                guideY = 26;
+                isSnappedY = true;
+            end
+            local dScrT0 = math.abs(rawTop - screenH);
+            if ( dScrT0 < bestDiffY ) then
+                bestDiffY = dScrT0;
+                snapBottom = screenH - h;
+                guideY = screenH;
+                isSnappedY = true;
+            end
+            local dScrT12 = math.abs(rawTop - (screenH - 12));
+            if ( dScrT12 < bestDiffY ) then
+                bestDiffY = dScrT12;
+                snapBottom = screenH - 12 - h;
+                guideY = screenH - 12;
+                isSnappedY = true;
+            end
+            local dScrMidY = math.abs(rawMidY - (screenH * 0.5));
+            if ( dScrMidY < bestDiffY ) then
+                bestDiffY = dScrMidY;
+                snapBottom = (screenH - h) * 0.5;
+                guideY = screenH * 0.5;
+                isSnappedY = true;
+            end
+        end
+
+        local tEffScale = this.targetFrame:GetEffectiveScale() or 1;
+        local scaleRatio = tEffScale / uScale;
+        if ( scaleRatio <= 0 ) then scaleRatio = 1; end
+        local finalX = snapLeft / scaleRatio;
+        local finalY = snapBottom / scaleRatio;
+
+        local origW = this.targetFrame:GetWidth();
+        local origH = this.targetFrame:GetHeight();
+        if ( origW and origW > 0 ) then this.targetFrame:SetWidth(origW); end
+        if ( origH and origH > 0 ) then this.targetFrame:SetHeight(origH); end
+
+        this.targetFrame:ClearAllPoints();
+        this.targetFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", math.floor(finalX + 0.5), math.floor(finalY + 0.5));
+
+        this:ClearAllPoints();
+        this:SetAllPoints(this.targetFrame);
+
+        if ( isSnappedX and guideX ) then
+            BordoUI_SnapLineV:ClearAllPoints();
+            BordoUI_SnapLineV:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", math.floor(guideX - 1 + 0.5), 0);
+            BordoUI_SnapLineV:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(guideX - 1 + 0.5), screenH);
+            BordoUI_SnapLineV:Show();
+        else
+            if ( BordoUI_SnapLineV ) then BordoUI_SnapLineV:Hide(); end
+        end
+
+        if ( isSnappedY and guideY ) then
+            BordoUI_SnapLineH:ClearAllPoints();
+            BordoUI_SnapLineH:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, math.floor(guideY - 1 + 0.5));
+            BordoUI_SnapLineH:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", screenW, math.floor(guideY - 1 + 0.5));
+            BordoUI_SnapLineH:Show();
+        else
+            if ( BordoUI_SnapLineH ) then BordoUI_SnapLineH:Hide(); end
+        end
+
+        local anySnapped = isSnappedX or isSnappedY;
+        if ( anySnapped and not this.lastSnapped ) then
+            PlaySound("igMainMenuOptionCheckBoxOn");
+        end
+        this.lastSnapped = anySnapped;
+
+        if ( anySnapped ) then
+            this:SetBackdropBorderColor(0.25, 1.00, 0.40, 1.00);
+            this.text:SetText(this.labelText .. " |cff55ff55[SNAPPED]|r");
+        else
+            this:SetBackdropBorderColor(0.20, 0.85, 1.00, 1.00);
+            this.text:SetText(this.labelText);
+        end
+    end);
+
     overlay:Hide();
     return overlay;
 end
+
 function BordoUI:ToggleMoveMode(enable)
     if ( enable == nil ) then
         enable = not BordoUI.moveModeActive;
@@ -627,8 +1308,8 @@ function BordoUI:ToggleMoveMode(enable)
     BordoUI.moveModeActive = enable;
     if ( not BordoUI.controlBar ) then
         local bar = CreateFrame("Frame", "BordoUI_MoveControlBar", UIParent);
-        bar:SetWidth(340);
-        bar:SetHeight(34);
+        bar:SetWidth(480);
+        bar:SetHeight(38);
         bar:SetPoint("TOP", UIParent, "TOP", 0, -25);
         bar:SetFrameStrata("TOOLTIP");
         bar:SetFrameLevel(105);
@@ -642,8 +1323,9 @@ function BordoUI:ToggleMoveMode(enable)
         });
         bar:SetBackdropColor(0.04, 0.04, 0.06, 0.95);
         bar:SetBackdropBorderColor(1.00, 0.82, 0.00, 1.00);
+
         local lockBtn = CreateFrame("Button", nil, bar);
-        lockBtn:SetWidth(150);
+        lockBtn:SetWidth(140);
         lockBtn:SetHeight(22);
         lockBtn:SetPoint("LEFT", bar, "LEFT", 8, 0);
         lockBtn:SetBackdrop({
@@ -660,8 +1342,13 @@ function BordoUI:ToggleMoveMode(enable)
             BordoUI:ToggleMoveMode(false);
             BordoUI:SetLocked(true);
         end);
+
+        local snapInfo = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+        snapInfo:SetPoint("CENTER", bar, "CENTER", 0, 0);
+        snapInfo:SetText("|cff55ff55Magnet Snap: ON|r\n|cffaaaaaa(Shift = Free Drag)|r");
+
         local resetBtn = CreateFrame("Button", nil, bar);
-        resetBtn:SetWidth(150);
+        resetBtn:SetWidth(140);
         resetBtn:SetHeight(22);
         resetBtn:SetPoint("RIGHT", bar, "RIGHT", -8, 0);
         resetBtn:SetBackdrop({
@@ -679,28 +1366,32 @@ function BordoUI:ToggleMoveMode(enable)
         end);
         BordoUI.controlBar = bar;
     end
+
     local targets = {
-        { frame = SurvivorUIRow, name = "Combat HUD (Drag Me)", key = "hudPos" },
-        { frame = BordoUI_StatsWindowFrame, name = "Stats Window (Drag Me)", key = "statsPos" },
-        { frame = BordoUI_BossTrackerFrame or AZSHelper_BossSchedulePanel, name = "Boss Tracker (Drag Me)", key = "bossTrackerPos" },
-        { frame = SurvivorUIBuild, name = "Build & Jewelry (Drag Me)", key = "buildPos" },
-        { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos" },
-        { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
-        { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos" },
-        { frame = BordoUI_MeterFrame or SurvivorUIMeter, name = "Damage Meter (Drag Me)", key = "meterPos" },
-		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
-		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
-		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos" },
-        { frame = AZSHelper_BossEncounterContainer, name = "Boss HP Bars (Drag Me)", key = "encounterBarsPos" },
-        { frame = BordoUI_ChoiceAdvisorHUD, name = "Custom Build HUD (Drag Me)", key = "choiceAdvisorPos" },
+        { frame = SurvivorUIRow, name = "Combat HUD (Drag Me)", key = "hudPos", scaleKey = "hudScale", windowKey = "hud" },
+        { frame = BordoUI_StatsWindowFrame, name = "Stats Window (Drag Me)", key = "statsPos", scaleKey = "statsScale", windowKey = "stats" },
+        { frame = BordoUI_BossTrackerFrame or AZSHelper_BossSchedulePanel, name = "Boss Tracker (Drag Me)", key = "bossTrackerPos", scaleKey = "bossTrackerScale", windowKey = "boss" },
+        { frame = SurvivorUIBuild, name = "Build & Jewelry (Drag Me)", key = "buildPos", scaleKey = "buildScale", windowKey = "build" },
+        { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos", scaleKey = "partyScale", windowKey = "party" },
+        { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos", scaleKey = "tallyScale", windowKey = "kills" },
+        { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos", scaleKey = "minimapDockScale", windowKey = "dock" },
+        { frame = BordoUI_MeterFrame or SurvivorUIMeter, name = "Damage Meter (Drag Me)", key = "meterPos", scaleKey = "meterScale", windowKey = "meter" },
+        { frame = BordoUI_PartyMeterFrame or SurvivorUIPartyMeter, name = "Party Damage Meter (Drag Me)", key = "partyMeterPos", scaleKey = "partyMeterScale", windowKey = "partymeter" },
+		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos", scaleKey = "tooltipScale", windowKey = "tooltip" },
+		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos", scaleKey = "lootAlertScale", windowKey = "loot" },
+		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos", scaleKey = "procTrackerScale", windowKey = "procs" },
+        { frame = AZSHelper_BossEncounterContainer, name = "Boss HP Bars (Drag Me)", key = "encounterBarsPos", scaleKey = "encounterBarsScale", windowKey = "bossbar" },
+        { frame = BordoUI_ChoiceAdvisorHUD, name = "Custom Build HUD (Drag Me)", key = "choiceAdvisorPos", scaleKey = "choiceAdvisorScale", windowKey = "guide" },
+        { frame = BordoUI_ChatBox or ChatFrame1, name = "Chat Window (Drag Me)", key = "chatPos", scaleKey = "chatScale", windowKey = "chat" },
+        { frame = BordoUI_HighestCritFrame, name = "Crit Banner (Drag Me)", key = "highestCritPos", scaleKey = "highestCritScale", windowKey = "crit" },
+        { frame = AZSHelper_StatsTableFrame, name = "Stats Table (Drag Me)", key = "statsTablePos", scaleKey = "statsTableScale", windowKey = "table" },
     };
+    BordoUI.RegisteredTargets = targets;
+
     for i = 1, table.getn(targets) do
         local t = targets[i];
         if ( t.frame ) then
             if ( not BordoUI.MoveOverlays[i] ) then
-                -- Capture this iteration's key and frame name. Without locals, Lua 5.0
-                -- closures can all retain the loop variable's final value, so dragging
-                -- the HUD writes another window's position and the HUD recenters next run.
                 local saveKey = t.key;
                 BordoUI.MoveOverlays[i] = CreateMoveOverlay(t.frame, t.name, function(f)
                     local pt, _, relPt, x, y = f:GetPoint();
@@ -724,6 +1415,14 @@ function BordoUI:ToggleMoveMode(enable)
                             BordoUIDB.meterRight = math.floor(f:GetRight() + 0.5);
                             BordoUIDB.meterBottom = math.floor(f:GetBottom() + 0.5);
                         end
+                    elseif ( saveKey == "partyMeterPos" ) then
+                        if ( BordoUI_SavePartyMeterPlace ) then
+                            BordoUI_SavePartyMeterPlace();
+                        else
+                            local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5), isCustom = true };
+                            BordoUIDB.partyMeterPos = pos;
+                            BordoUIDB.partyMeterIsCustom = true;
+                        end
                     elseif ( saveKey == "buildPos" ) then
                         local pos = { point = pt, relativePoint = relPt or pt, x = math.floor(x + 0.5), y = math.floor(y + 0.5) };
                         BordoUIDB.buildPos = pos;
@@ -740,24 +1439,35 @@ function BordoUI:ToggleMoveMode(enable)
                     else
                         BordoUIDB[saveKey] = { point = pt, relativePoint = relPt, x = x, y = y };
                     end
-                end);
+                end, t.scaleKey, t.key);
             end
-            if ( enable ) then
+            BordoUI.MoveOverlays[i].targetFrame = t.frame;
+            local isEnabled = (not t.windowKey) or (not BordoUI.IsWindowEnabled) or BordoUI:IsWindowEnabled(t.windowKey);
+            if ( enable and isEnabled ) then
                 BordoUI.MoveOverlays[i]:ClearAllPoints();
                 BordoUI.MoveOverlays[i]:SetAllPoints(t.frame);
                 BordoUI.MoveOverlays[i]:Show();
             else
+                if ( BordoUI.MoveOverlays[i].resizeGrip and BordoUI.MoveOverlays[i].resizeGrip.StopResize ) then
+                    BordoUI.MoveOverlays[i].resizeGrip:StopResize();
+                end
+                if ( BordoUI.MoveOverlays[i].StopDrag ) then
+                    BordoUI.MoveOverlays[i]:StopDrag();
+                end
                 BordoUI.MoveOverlays[i]:Hide();
             end
         end
     end
     if ( enable ) then
+        if ( BordoUI.ApplyAllWindowScales ) then BordoUI:ApplyAllWindowScales(); end
         BordoUI.controlBar:Show();
         BordoUIDB.locked = false;
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cff55ff55[ACTIVE]|r. Drag any colored box to reposition. Click |cffffd100[Lock All Windows]|r or type |cffffd100/lock|r when done.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cff55ff55[ACTIVE]|r with Magnetic Snapping. Drag any colored box to reposition. Windows snap to edges & axes (hold |cffffd100Shift|r for free drag). Click |cffffd100[Lock All Windows]|r or type |cffffd100/lock|r when done.");
     else
         BordoUI.controlBar:Hide();
         BordoUIDB.locked = true;
+        if ( BordoUI_SnapLineH ) then BordoUI_SnapLineH:Hide(); end
+        if ( BordoUI_SnapLineV ) then BordoUI_SnapLineV:Hide(); end
         if ( AZSHelper and AZSHelper.DockAllChatFrames ) then AZSHelper:DockAllChatFrames(); end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cffff3333[OFF]|r. All window positions saved.");
     end
@@ -767,7 +1477,73 @@ function BordoUI:ToggleMoveMode(enable)
     if ( BordoUI.UpdateAllLockButtons ) then
         BordoUI:UpdateAllLockButtons();
     end
+    if ( BordoUI_UpdateMeterResizeGrip ) then
+        BordoUI_UpdateMeterResizeGrip();
+    end
+    if ( BordoUI_DrawPartyMeter ) then
+        BordoUI_DrawPartyMeter();
+    end
 end
+
+function BordoUI:UpdateMoveOverlaysVisibility()
+    if ( not BordoUI.moveModeActive or not BordoUI.RegisteredTargets or not BordoUI.MoveOverlays ) then
+        return;
+    end
+    for i = 1, table.getn(BordoUI.RegisteredTargets) do
+        local t = BordoUI.RegisteredTargets[i];
+        local ov = BordoUI.MoveOverlays[i];
+        if ( t and t.frame and ov ) then
+            local isEnabled = (not t.windowKey) or (not BordoUI.IsWindowEnabled) or BordoUI:IsWindowEnabled(t.windowKey);
+            if ( isEnabled ) then
+                ov:ClearAllPoints();
+                ov:SetAllPoints(t.frame);
+                ov:Show();
+            else
+                if ( ov.resizeGrip and ov.resizeGrip.StopResize ) then
+                    ov.resizeGrip:StopResize();
+                end
+                if ( ov.StopDrag ) then
+                    ov:StopDrag();
+                end
+                ov:Hide();
+            end
+        end
+    end
+end
+
+function BordoUI:ApplyAllWindowScales()
+    if not BordoUIDB then return; end
+    local targets = {
+        { frame = SurvivorUIRow, scaleKey = "hudScale", def = 1.0 },
+        { frame = BordoUI_StatsWindowFrame, scaleKey = "statsScale", def = 1.0 },
+        { frame = BordoUI_BossTrackerFrame or AZSHelper_BossSchedulePanel, scaleKey = "bossTrackerScale", def = 1.0 },
+        { frame = SurvivorUIBuild, scaleKey = "buildScale", def = 1.0 },
+        { frame = SurvivorUIParty, scaleKey = "partyScale", def = 1.0 },
+        { frame = AZSHelper_TallyFrame, scaleKey = "tallyScale", def = 1.0 },
+        { frame = BordoUI_MinimapDock, scaleKey = "minimapDockScale", def = 1.0 },
+        { frame = BordoUI_MeterFrame or SurvivorUIMeter, scaleKey = "meterScale", def = 1.0 },
+        { frame = BordoUI_PartyMeterFrame or SurvivorUIPartyMeter, scaleKey = "partyMeterScale", def = 1.0 },
+        { frame = BordoUI_TooltipAnchor, scaleKey = "tooltipScale", def = 1.0 },
+        { frame = BordoUI_LootAlertFrame, scaleKey = "lootAlertScale", def = 1.0 },
+        { frame = BordoUI_ProcTrackerFrame, scaleKey = "procTrackerScale", def = 1.0 },
+        { frame = AZSHelper_BossEncounterContainer, scaleKey = "encounterBarsScale", def = 1.0 },
+        { frame = BordoUI_ChoiceAdvisorHUD, scaleKey = "choiceAdvisorScale", def = 1.0 },
+        { frame = BordoUI_ChatBox or ChatFrame1, scaleKey = "chatScale", def = 1.0 },
+        { frame = BordoUI_HighestCritFrame, scaleKey = "highestCritScale", def = 1.0 },
+        { frame = AZSHelper_StatsTableFrame, scaleKey = "statsTableScale", def = 0.80 },
+    };
+    for i = 1, table.getn(targets) do
+        local t = targets[i];
+        if ( t.frame ) then
+            local s = (t.scaleKey and BordoUIDB[t.scaleKey]) or t.def or 1.0;
+            s = tonumber(s) or 1.0;
+            if ( s >= 0.50 and s <= 2.00 ) then
+                t.frame:SetScale(s);
+            end
+        end
+    end
+end
+
 function BordoUI:ResetToDefaultLayout()
     local defaultHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 };
     BordoUIDB = BordoUIDB or {};
@@ -800,7 +1576,28 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.meterLines = nil;
     BordoUIDB.meterRight = nil;
     BordoUIDB.meterBottom = nil;
-    BordoUIDB.meterScale = 1.0;
+    BordoUIDB.meterScale = nil;
+    BordoUIDB.partyMeterPos = nil;
+    BordoUIDB.partyMeterIsCustom = nil;
+    BordoUIDB.partyMeterScale = nil;
+    BordoUIDB.hudScale = nil;
+    BordoUIDB.statsScale = nil;
+    BordoUIDB.bossTrackerScale = nil;
+    BordoUIDB.buildScale = nil;
+    BordoUIDB.partyScale = nil;
+    BordoUIDB.tallyScale = nil;
+    BordoUIDB.minimapDockScale = nil;
+    BordoUIDB.tooltipScale = nil;
+    BordoUIDB.lootAlertScale = nil;
+    BordoUIDB.procTrackerScale = nil;
+    BordoUIDB.encounterBarsScale = nil;
+    BordoUIDB.choiceAdvisorScale = nil;
+    BordoUIDB.chatScale = nil;
+    BordoUIDB.highestCritScale = nil;
+    BordoUIDB.statsTableScale = nil;
+    if ( BordoUI.ApplyAllWindowScales ) then
+        BordoUI:ApplyAllWindowScales();
+    end
     BordoUIDB.sctOutgoingPos = nil;
     BordoUIDB.sctIncomingPos = nil;
     if ( BordoUI_SCT_OutgoingAnchor ) then
@@ -824,19 +1621,14 @@ function BordoUI:ResetToDefaultLayout()
     end
 	if ( BordoUI_TooltipAnchor ) then
 		BordoUI_TooltipAnchor:ClearAllPoints();
-		if ( BordoUI_ChatBox ) then
-			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", BordoUI_ChatBox, "BOTTOMRIGHT", 12, 0);
-		elseif ( ChatFrame1 ) then
-			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
-		else
-			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
-		end
+		BordoUI_TooltipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
 	end
     if ( BordoUI_ResetThemeUI ) then BordoUI_ResetThemeUI(); end
     if ( StatsUI and StatsUI.ResetPosition ) then StatsUI:ResetPosition(); end
     if ( TrackerUI and TrackerUI.ResetPosition ) then TrackerUI:ResetPosition(); end
     if ( BordoUI_ResetBuildPosition ) then BordoUI_ResetBuildPosition(); end
     if ( BordoUI_ResetMeterPosition ) then BordoUI_ResetMeterPosition(); end
+    if ( BordoUI_ResetPartyMeterPosition ) then BordoUI_ResetPartyMeterPosition(); end
     if ( BordoUI_ResetPartyPosition ) then BordoUI_ResetPartyPosition(); end
     if ( BordoUI_ChatBox ) then
         BordoUI_ChatBox:ClearAllPoints();

@@ -50,6 +50,16 @@ local function NormalizeIconPath(icon)
         s = "Interface\\Icons\\" .. string.sub(s, 15);
     elseif string.find(s, "^Interface[\\/]Icons[\\/]") then
         s = "Interface\\Icons\\" .. string.sub(s, 17);
+    elseif not string.find(s, "^Interface[\\/]") then
+        s = "Interface\\Icons\\" .. s;
+    end
+    local lower = string.lower(s);
+    if string.find(lower, "inv_jewelry_ring_40") then
+        s = "Interface\\Icons\\INV_Jewelry_Ring_35";
+    elseif string.find(lower, "inv_jewelry_ring_49") and not string.find(lower, "naxxramas") then
+        s = "Interface\\Icons\\INV_Jewelry_Ring_49Naxxramas";
+    elseif string.find(lower, "inv_jewelry_ring_51") and not string.find(lower, "naxxramas") then
+        s = "Interface\\Icons\\INV_Jewelry_Ring_51Naxxramas";
     end
     return s;
 end
@@ -433,7 +443,7 @@ local function GetCustomBuild(classKey, buildIdx)
     local cb = builds and builds[idx];
     local startersList = BordoUI_GetLiveStartersList and BordoUI_GetLiveStartersList(cUpper);
 
-    if cb and cb.spells and startersList and table.getn(startersList) > 0 and BordoUI_SyncBuildStarters then
+    if cb and cb.isCustom and cb.spells and startersList and table.getn(startersList) > 0 and BordoUI_SyncBuildStarters then
         BordoUI_SyncBuildStarters(cb, startersList, cUpper);
     end
     if cb and cb.jewelry then
@@ -444,13 +454,7 @@ local function GetCustomBuild(classKey, buildIdx)
                 end
                 if k == "neck" then
                     v.slotType = "NECK";
-                    if (not v.spell or v.spell == "") and v.name and string.find(v.name, ":") then
-                        local _, _, sp = string.find(v.name, ":%s*([^:]+)");
-                        if sp then
-                            v.spell = string.gsub(sp, "%s+[IVXLCDMivxlcdm%d]+$", "");
-                        end
-                    end
-                    if v.spell and v.spell ~= "" then
+                    if (not v.name or v.name == "") and v.spell and v.spell ~= "" then
                         v.name = "Eye of the Splitting Sky: " .. v.spell;
                         v.icon = "Interface\\Icons\\INV_Jewelry_Necklace_20";
                         v.quality = 5;
@@ -696,6 +700,10 @@ for t = 1, 3 do
     tab.tabIdx = t;
     tab:SetScript("OnClick", function()
         currentBuildIdx = this.tabIdx;
+        local b = GetCustomBuild(currentClass, currentBuildIdx);
+        if b and not b.isCustom and CloseCatalogDrawer then
+            CloseCatalogDrawer();
+        end
         BordoUI_BuildAdvisor_Refresh();
     end);
     buildTabs[t] = tab;
@@ -719,7 +727,7 @@ activateBtn.text = activateText;
 
 -- Build Info Header Card
 local infoCard = CreateFrame("Frame", nil, contentPanel);
-infoCard:SetHeight(64);
+infoCard:SetHeight(86);
 infoCard:SetPoint("TOPLEFT", topBar, "BOTTOMLEFT", 10, -4);
 infoCard:SetPoint("TOPRIGHT", topBar, "BOTTOMRIGHT", -10, -4);
 infoCard:SetBackdrop({
@@ -750,6 +758,8 @@ buildSummary:SetTextColor(0.85, 0.85, 0.88);
 local buildStats = infoCard:CreateFontString(nil, "OVERLAY"); AUI.buildStats = buildStats;
 buildStats:SetFont("Fonts\\ARIALN.TTF", 10);
 buildStats:SetPoint("TOPLEFT", buildSummary, "BOTTOMLEFT", 0, -4);
+buildStats:SetPoint("TOPRIGHT", infoCard, "TOPRIGHT", -10, -68);
+buildStats:SetJustifyH("LEFT");
 buildStats:SetTextColor(1.0, 0.82, 0.2);
 
 -- Status banner that flashes when you activate
@@ -815,8 +825,8 @@ local currentViewMode = "OVERVIEW"; -- "OVERVIEW" or "TALENTS"
 
 local viewBar = CreateFrame("Frame", nil, contentPanel);
 viewBar:SetHeight(24);
-viewBar:SetPoint("TOPLEFT", infoCard, "BOTTOMLEFT", 0, -4);
-viewBar:SetPoint("TOPRIGHT", infoCard, "BOTTOMRIGHT", 0, -4);
+viewBar:SetPoint("TOPLEFT", infoCard, "BOTTOMLEFT", 0, -6);
+viewBar:SetPoint("TOPRIGHT", infoCard, "BOTTOMRIGHT", 0, -6);
 
 local viewSpellsBtn = CreateFrame("Button", nil, viewBar);
 viewSpellsBtn:SetWidth(164);
@@ -901,11 +911,11 @@ for sIdx = 1, 6 do
     local col = (sIdx <= 3) and 1 or 2;
     local posInCol = (sIdx <= 3) and sIdx or (sIdx - 3);
 
-    row:SetWidth(240);
+    row:SetWidth(295);
     if col == 1 then
         row:SetPoint("TOPLEFT", spellCard, "TOPLEFT", 10, -22 - (posInCol - 1) * 44);
     else
-        row:SetPoint("TOPLEFT", spellCard, "TOPLEFT", 262, -22 - (posInCol - 1) * 44);
+        row:SetPoint("TOPLEFT", spellCard, "TOPLEFT", 318, -22 - (posInCol - 1) * 44);
     end
 
     local badge = row:CreateFontString(nil, "OVERLAY");
@@ -932,6 +942,8 @@ for sIdx = 1, 6 do
     local sName = row:CreateFontString(nil, "OVERLAY");
     sName:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE");
     sName:SetPoint("LEFT", icon, "RIGHT", 6, 0);
+    sName:SetPoint("RIGHT", selectBtn, "LEFT", -4, 0);
+    sName:SetJustifyH("LEFT");
 
     local reason = row:CreateFontString(nil, "OVERLAY");
     reason:SetFont("Fonts\\ARIALN.TTF", 9);
@@ -1107,7 +1119,8 @@ for sIdx = 1, 6 do
         GameTooltip:Hide();
     end);
     row:SetScript("OnMouseUp", function()
-        if OpenCatalogDrawer then
+        local curBuild = GetCurrentAdvisorBuild();
+        if curBuild and curBuild.isCustom and OpenCatalogDrawer then
             OpenCatalogDrawer("SPELL", this.sIdx);
         end
     end);
@@ -1558,7 +1571,8 @@ for gIdx = 1, (gearSlots and table.getn(gearSlots) or 0) do
     end);
 
     f:SetScript("OnClick", function()
-        if OpenCatalogDrawer then
+        local curBuild = GetCurrentAdvisorBuild();
+        if curBuild and curBuild.isCustom and OpenCatalogDrawer then
             local defFilter = (this.gInfo.key == "neck" and "Necks")
                 or ((this.gInfo.key == "ring1" or this.gInfo.key == "ring2") and "Rings")
                 or "Trinkets";
@@ -1900,7 +1914,28 @@ UpdateCatalogDrawerList = function()
         local itmData = currentFilteredItems[itmIdx];
         if itmData then
             rBtn.itemData = itmData;
-            rBtn.icon:SetTexture(NormalizeIconPath(itmData.icon));
+            local normTex = NormalizeIconPath(itmData.icon);
+            if (not normTex or normTex == "" or string.find(normTex, "Dragoncall")) and itmData.name and BordoUI_Catalog and BordoUI_Catalog.Jewelry then
+                for _, cItm in ipairs(BordoUI_Catalog.Jewelry) do
+                    if cItm.name == itmData.name and cItm.icon then
+                        normTex = NormalizeIconPath(cItm.icon);
+                        itmData.icon = cItm.icon;
+                        break;
+                    end
+                end
+            end
+            rBtn.icon:SetTexture(normTex);
+            if not rBtn.icon:GetTexture() or rBtn.icon:GetTexture() == "" then
+                if itmData.slotType == "RING" then
+                    rBtn.icon:SetTexture("Interface\\Icons\\INV_Jewelry_Ring_03");
+                elseif itmData.slotType == "NECK" then
+                    rBtn.icon:SetTexture("Interface\\Icons\\INV_Jewelry_Necklace_01");
+                elseif itmData.slotType == "TRINKET" then
+                    rBtn.icon:SetTexture("Interface\\Icons\\INV_Misc_ArmorKit_09");
+                else
+                    rBtn.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+                end
+            end
             if currentDrawerMode == "SPELL" then
                 local sColor = SCHOOL_COLORS[itmData.school] or { 1, 1, 1 };
                 rBtn.name:SetText(itmData.name);
@@ -2710,8 +2745,12 @@ for i = 1, 5 do
             if not moved then
                 local spKey = this.spellData.key or string.lower(string.gsub(this.spellData.name, "[%s%p_]", ""));
                 BordoUI_BanishedSpells = BordoUI_BanishedSpells or {};
-                if BordoUI_BanishedSpells[spKey] then
-                    BordoUI_BanishedSpells[spKey] = nil;
+                local curBan = this.spellData.banished;
+                if BordoUI_BanishedSpells[spKey] ~= nil then
+                    curBan = BordoUI_BanishedSpells[spKey];
+                end
+                if curBan then
+                    BordoUI_BanishedSpells[spKey] = false;
                     DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Unbanished |cff00ff00" .. this.spellData.name .. "|r from Choice HUD.");
                 else
                     BordoUI_BanishedSpells[spKey] = true;
@@ -3014,88 +3053,23 @@ RefreshChoiceHUD = function()
 
     BordoUI_BanishedSpells = BordoUI_BanishedSpells or {};
 
-    -- Detect any active talent spells on character action bar that are NOT in the build
-    local talentSpells = {};
-    if AZS_SPELLS and table.getn(AZS_SPELLS) > 1 then
-        local numRegular = table.getn(AZS_SPELLS) - 1;
-        for idx = 1, numRegular do
-            local e = AZS_SPELLS[idx];
-            local eKey = e and (e.key or e[1]) or "";
-            local eSpell = e and (e.spell or e[2]);
-            local eName = "";
-            local eIcon = e and (e.icon or e[2]);
-
-            if type(eSpell) == "string" and eSpell ~= "" then
-                eName = eSpell;
-            elseif type(eSpell) == "number" and GetSpellInfo then
-                local sName, _, sIcon = GetSpellInfo(eSpell);
-                if sName and sName ~= "" then
-                    eName = sName;
-                    if not eIcon or type(eIcon) ~= "string" or eIcon == "" then eIcon = sIcon; end
-                end
-            end
-            if eName == "" and eKey ~= "" then
-                eName = SpellKeyToName(eKey);
-            end
-
-            -- Also check action bar button
-            if (eName == "" or not eIcon or type(eIcon) ~= "string") and idx <= 6 then
-                local aName, aTex = GetActionSlotSpell(idx);
-                if aName and aName ~= "" then eName = aName; end
-                if aTex and aTex ~= "" then eIcon = aTex; end
-            end
-
-            if eName ~= "" then
-                local inBuild = false;
-                for s = 1, 6 do
-                    local bsp = activeBuild.spells and activeBuild.spells[s];
-                    if bsp and (bsp.name == eName or (bsp.key and CanonicalSpellKey(bsp.key) == CanonicalSpellKey(eName)) or (bsp.icon and eIcon and IconsMatch(bsp.icon, eIcon))) then
-                        inBuild = true;
-                        break;
-                    end
-                end
-                local isStarter = IsClassStarter(actClass, eName, eKey, eIcon);
-                local isRacial = BordoUI_IsRacialSpell and BordoUI_IsRacialSpell(eName, eKey);
-                if not inBuild and not isStarter and not isRacial then
-                    table.insert(talentSpells, {
-                        name = eName,
-                        icon = (type(eIcon) == "string" and eIcon) or "Interface\\Icons\\INV_Misc_QuestionMark",
-                        rank = tonumber(e.rank or e[3]) or 1,
-                        isTalent = true,
-                    });
-                end
-            end
-        end
-    end
-
-    -- Compile the 5 display spells for the Choice HUD strictly in user priority order:
-    local buildDraftSpells = {};
-    for s = 1, 6 do
+    -- Fixed Choice HUD Slots strictly mapped to activeBuild.spells[1..5]
+    local displaySpells = {};
+    for s = 1, 5 do
         local bsp = activeBuild.spells and activeBuild.spells[s];
         if bsp and bsp.name then
-            table.insert(buildDraftSpells, bsp);
-        end
-    end
-
-    local numTalents = table.getn(talentSpells);
-    local maxDraftSlots = math.max(0, 5 - numTalents);
-    local displaySpells = {};
-    for idx = 1, maxDraftSlots do
-        if buildDraftSpells[idx] then
-            table.insert(displaySpells, buildDraftSpells[idx]);
-        end
-    end
-    for tIdx = 1, numTalents do
-        if table.getn(displaySpells) < 5 then
-            table.insert(displaySpells, talentSpells[tIdx]);
+            table.insert(displaySpells, bsp);
         end
     end
 
     local numLearnedPicks = 0;
 
     -- Update Row 1: 5 Spells
-    -- Slot #1: Priority slot: if unlearned -> "[PICK #1]", once learned -> steady "PRIO" (antique gold, no blink).
-    -- Slots #2 to #5: If unlearned and free slots exist -> "[PICK]" in green! Once learned -> ONLY spell name centered vertically.
+    -- Flow:
+    -- If unlearned (curRank == 0 and not isSlotsFull): ALWAYS display [PICK] (or [PICK #1]) with bright icon and pulsing glow, even if marked for banish!
+    -- Once learned (curRank > 0): if marked for banish -> automatically transitions to [BANISH] in red with dimmed icon!
+    -- If learned and not banished: steady PRIO (slot 1) or clean centered name (slots 2-5).
+    -- If bar is full (isSlotsFull) and unlearned: [BANISH] if banished, else [Full].
     for i = 1, 5 do
         local slot = hudSlots[i];
         local sp = displaySpells[i];
@@ -3113,7 +3087,10 @@ RefreshChoiceHUD = function()
             slot.sTitle:SetText(displayName);
 
             local spKey = sp.key or string.lower(string.gsub(sp.name, "[%s%p_]", ""));
-            local isBanished = BordoUI_BanishedSpells[spKey];
+            local isBanished = sp.banished;
+            if BordoUI_BanishedSpells and BordoUI_BanishedSpells[spKey] ~= nil then
+                isBanished = BordoUI_BanishedSpells[spKey];
+            end
             local curRank = sp.isTalent and (sp.rank or 1) or GetLearnedRank(sp);
 
             if curRank > 0 then
@@ -3131,33 +3108,21 @@ RefreshChoiceHUD = function()
                 slot.status:SetText("|cff60a5fa[Talent]|r");
                 slot.status:Show();
                 slot:SetAlpha(0.85);
+                slot.icon:SetVertexColor(1, 1, 1);
                 slot:SetBackdropColor(0.02, 0.04, 0.08, 0.35);
                 slot:SetBackdropBorderColor(0.20, 0.35, 0.60, 0.70);
-            elseif isBanished then
-                slot.isPickActive = false;
-                slot.isPrioPick = false;
+            elseif curRank == 0 and not isSlotsFull then
+                -- NOT YET LEARNED and room on action bar: ALWAYS show [PICK]!
+                slot.isPickActive = true;
                 slot.badge:SetText("#" .. (sp.prio or i));
-                slot.badge:SetTextColor(1, 0.85, 0.2);
-                slot.sTitle:ClearAllPoints();
-                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
-                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
-                slot.status:SetText("|cffff4444[BANISHED]|r");
-                slot.status:Show();
-                slot:SetAlpha(0.35);
-                slot.icon:SetVertexColor(0.4, 0.4, 0.4);
-                slot:SetBackdropColor(0.15, 0.05, 0.05, 0.25);
-                slot:SetBackdropBorderColor(0.40, 0.15, 0.15, 0.50);
-            elseif i == 1 then
-                -- Slot 1: ALWAYS Priority Slot
-                slot.badge:SetText("#" .. (sp.prio or 1));
-                slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
                 slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
                 slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
                 slot:SetAlpha(1.0);
-                if curRank == 0 and not isSlotsFull then
-                    slot.isPickActive = true;
+                slot.icon:SetVertexColor(1, 1, 1);
+                if i == 1 then
                     slot.isPrioPick = true;
+                    slot.badge:SetTextColor(1, 0.85, 0.2);
                     slot.status:SetText("|cffffd200[PICK #1]|r");
                     slot.status:Show();
                     slot:SetBackdropColor(0.04, 0.07, 0.03, 0.40);
@@ -3171,38 +3136,53 @@ RefreshChoiceHUD = function()
                         slot.iconGlow:Show();
                     end
                 else
-                    slot.isPickActive = false;
                     slot.isPrioPick = false;
-                    slot.status:SetText("|cffdfba66PRIO|r");
+                    slot.badge:SetTextColor(1, 0.85, 0.2);
+                    slot.status:SetText("|cff34d399[PICK]|r");
                     slot.status:Show();
-                    slot:SetBackdropColor(0.05, 0.04, 0.02, 0.40);
-                    slot:SetBackdropBorderColor(0.70, 0.58, 0.28, 0.90);
+                    slot:SetBackdropColor(0.02, 0.06, 0.03, 0.35);
+                    slot:SetBackdropBorderColor(0.25, 0.90, 0.45, 0.85);
+                    if slot.glow then
+                        slot.glow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
+                        slot.glow:Show();
+                    end
+                    if slot.iconGlow then
+                        slot.iconGlow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
+                        slot.iconGlow:Show();
+                    end
                 end
-            elseif curRank == 0 and not isSlotsFull then
-                -- Slots 2 to 5: NOT YET LEARNED and free slot exists -> SHOW [PICK] and PULSE / GLOW!
-                slot.isPickActive = true;
+            elseif curRank > 0 and isBanished then
+                -- LEARNED and marked for banish: show [BANISH] with dimmed icon!
+                slot.isPickActive = false;
                 slot.isPrioPick = false;
                 slot.badge:SetText("#" .. (sp.prio or i));
                 slot.badge:SetTextColor(1, 0.85, 0.2);
                 slot.sTitle:ClearAllPoints();
                 slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
                 slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
-                slot.status:SetText("|cff34d399[PICK]|r");
+                slot.status:SetText("|cffff4444[BANISH]|r");
+                slot.status:Show();
+                slot:SetAlpha(0.40);
+                slot.icon:SetVertexColor(0.4, 0.4, 0.4);
+                slot:SetBackdropColor(0.15, 0.05, 0.05, 0.25);
+                slot:SetBackdropBorderColor(0.50, 0.15, 0.15, 0.60);
+            elseif i == 1 then
+                -- Slot 1 LEARNED: steady PRIO (antique gold)
+                slot.isPickActive = false;
+                slot.isPrioPick = false;
+                slot.badge:SetText("#" .. (sp.prio or 1));
+                slot.badge:SetTextColor(1, 0.85, 0.2);
+                slot.sTitle:ClearAllPoints();
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
+                slot.status:SetText("|cffdfba66PRIO|r");
                 slot.status:Show();
                 slot:SetAlpha(1.0);
                 slot.icon:SetVertexColor(1, 1, 1);
-                slot:SetBackdropColor(0.02, 0.06, 0.03, 0.35);
-                slot:SetBackdropBorderColor(0.25, 0.90, 0.45, 0.85);
-                if slot.glow then
-                    slot.glow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
-                    slot.glow:Show();
-                end
-                if slot.iconGlow then
-                    slot.iconGlow:SetVertexColor(0.20, 0.95, 0.45, 1.0);
-                    slot.iconGlow:Show();
-                end
-            else
-                -- Slots 2 to 5: LEARNED (or slots full): ONLY spell name, centered vertically, no Rank/MAX
+                slot:SetBackdropColor(0.05, 0.04, 0.02, 0.40);
+                slot:SetBackdropBorderColor(0.70, 0.58, 0.28, 0.90);
+            elseif curRank > 0 then
+                -- Slots 2 to 5 LEARNED (not banished): clean centered spell name
                 slot.isPickActive = false;
                 slot.isPrioPick = false;
                 slot.badge:SetText("#" .. (sp.prio or i));
@@ -3213,8 +3193,32 @@ RefreshChoiceHUD = function()
                 slot.status:SetText("");
                 slot.status:Hide();
                 slot:SetAlpha(1.0);
+                slot.icon:SetVertexColor(1, 1, 1);
                 slot:SetBackdropColor(0.02, 0.02, 0.04, 0.30);
                 slot:SetBackdropBorderColor(0.24, 0.22, 0.18, 0.70);
+            else
+                -- Slots full and unlearned
+                slot.isPickActive = false;
+                slot.isPrioPick = false;
+                slot.badge:SetText("#" .. (sp.prio or i));
+                slot.badge:SetTextColor(0.6, 0.6, 0.6);
+                slot.sTitle:ClearAllPoints();
+                slot.sTitle:SetPoint("TOPLEFT", slot.icon, "TOPRIGHT", 5, 2);
+                slot.sTitle:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -3, 2);
+                if isBanished then
+                    slot.status:SetText("|cffff4444[BANISH]|r");
+                    slot:SetAlpha(0.35);
+                    slot.icon:SetVertexColor(0.4, 0.4, 0.4);
+                    slot:SetBackdropColor(0.15, 0.05, 0.05, 0.25);
+                    slot:SetBackdropBorderColor(0.40, 0.15, 0.15, 0.50);
+                else
+                    slot.status:SetText("|cff888888[Full]|r");
+                    slot:SetAlpha(0.50);
+                    slot.icon:SetVertexColor(0.6, 0.6, 0.6);
+                    slot:SetBackdropColor(0.02, 0.02, 0.03, 0.25);
+                    slot:SetBackdropBorderColor(0.20, 0.20, 0.20, 0.50);
+                end
+                slot.status:Show();
             end
         else
             slot.isPickActive = false;
@@ -3262,7 +3266,17 @@ RefreshChoiceHUD = function()
                 itmObj.slotType = "TRINKET";
             end
             jSlot.jewelryData = itmObj;
-            jSlot.icon:SetTexture(NormalizeIconPath(itmObj.icon));
+            local resolvedIcon = itmObj.icon;
+            if (not resolvedIcon or resolvedIcon == "" or string.find(resolvedIcon, "Dragoncall")) and itmObj.name and BordoUI_Catalog and BordoUI_Catalog.Jewelry then
+                for _, cItm in ipairs(BordoUI_Catalog.Jewelry) do
+                    if cItm.name == itmObj.name and cItm.icon then
+                        resolvedIcon = cItm.icon;
+                        itmObj.icon = resolvedIcon;
+                        break;
+                    end
+                end
+            end
+            jSlot.icon:SetTexture(NormalizeIconPath(resolvedIcon));
 
             local qColor = ITEM_QUALITY_COLORS[itmObj.quality or 4] or { r = 1, g = 1, b = 1 };
             local displayName = itmObj.name or "Jewelry";
@@ -3281,6 +3295,14 @@ RefreshChoiceHUD = function()
             jSlot.isEquipped = isEq;
 
             local itmBenefit = itmObj.benefit or "";
+            if (itmBenefit == "" or string.find(itmBenefit, "X%%")) and itmObj.name and BordoUI_Catalog and BordoUI_Catalog.Jewelry then
+                for _, cItm in ipairs(BordoUI_Catalog.Jewelry) do
+                    if cItm.name == itmObj.name then
+                        itmBenefit = cItm.benefit or "";
+                        break;
+                    end
+                end
+            end
             if string.len(itmBenefit) > 14 then
                 itmBenefit = string.sub(itmBenefit, 1, 13) .. ".";
             end
@@ -3407,15 +3429,15 @@ function BordoUI_BuildAdvisor_Refresh()
         end
     end
 
-    -- Update 3 Custom Build Tabs (Build 1, Build 2, Build 3)
+    -- Update 3 Build Tabs (Preset 1, Preset 2, Custom Build)
     for t = 1, 3 do
         local b = GetCustomBuild(currentClass, t);
         local tab = buildTabs[t];
         if tab and b then
-            tab:SetWidth(104);
+            tab:SetWidth(110);
             tab:ClearAllPoints();
-            tab:SetPoint("LEFT", topBar, "LEFT", 10 + (t - 1) * 108, 0);
-            local tTitle = b.title or ("Build " .. t);
+            tab:SetPoint("LEFT", topBar, "LEFT", 10 + (t - 1) * 114, 0);
+            local tTitle = b.title or (b.isCustom and "Custom Build" or ("Build " .. t));
             if string.len(tTitle) > 13 then
                 tTitle = string.sub(tTitle, 1, 11) .. "..";
             end
@@ -3434,9 +3456,13 @@ function BordoUI_BuildAdvisor_Refresh()
     local curBuild = GetCurrentAdvisorBuild();
     if not curBuild then return; end
 
-    -- Rename button is always available for custom builds
+    -- Rename button is only available for custom builds
     if renameBtn then
-        renameBtn:Show();
+        if curBuild.isCustom then
+            renameBtn:Show();
+        else
+            renameBtn:Hide();
+        end
     end
 
     -- Check if this build is currently the ACTIVE tracked build
@@ -3458,10 +3484,10 @@ function BordoUI_BuildAdvisor_Refresh()
 
     -- Update Info Card
     local cInfo = BordoUI_BuildData.Classes[currentClass];
-    buildTitle:SetText(curBuild.title or "Custom Build");
+    buildTitle:SetText(curBuild.title or "Build " .. currentBuildIdx);
     buildTitle:SetTextColor(cInfo.color[1], cInfo.color[2], cInfo.color[3]);
-    buildRole:SetText("[" .. (curBuild.role or "Custom Build") .. "]");
-    buildSummary:SetText(curBuild.summary or curBuild.desc or "Craft your own custom build by selecting spells and jewelry.");
+    buildRole:SetText("[" .. (curBuild.role or curBuild.spec or (curBuild.isCustom and "Custom Build" or "Preset Meta")) .. "]");
+    buildSummary:SetText(curBuild.summary or curBuild.desc or (curBuild.isCustom and "Craft your own custom build by selecting spells and jewelry." or ""));
 
     if curBuild.talents then
         viewDistText:SetText("|cffffd200Talents:|r |cff00ff00" .. curBuild.talents.summary .. " (51 Pts)|r");
@@ -3479,30 +3505,42 @@ function BordoUI_BuildAdvisor_Refresh()
         buildStats:SetText("|cffffd200Stat Priority:|r " .. (curBuild.statPriority or "Custom") .. "  |cff888888(Talents: " .. (curBuild.talents and curBuild.talents.summary or "Freestyle") .. ")|r");
     end
 
-    -- Update Spell Rows (All 3 builds are custom and fully configurable!)
+    -- Update Spell Rows: For preset builds (Tab 1 & 2), show clean fixed rows without edit buttons.
+    -- For custom build (Tab 3), show interactive [Pick], [^], [v], [X] buttons.
     for sIdx = 1, 6 do
         local r = spellRows[sIdx];
         local sp = curBuild.spells and curBuild.spells[sIdx];
 
         if sp then
-            if r.selectBtn then r.selectBtn:Show(); end
-            if r.upBtn then
-                if sIdx == 1 then r.upBtn:Hide(); else r.upBtn:Show(); end
+            if curBuild.isCustom then
+                if r.selectBtn then r.selectBtn:Show(); end
+                if r.upBtn then
+                    if sIdx == 1 then r.upBtn:Hide(); else r.upBtn:Show(); end
+                end
+                if r.downBtn then
+                    if sIdx == 6 then r.downBtn:Hide(); else r.downBtn:Show(); end
+                end
+                if r.clearBtn then r.clearBtn:Show(); end
+            else
+                if r.selectBtn then r.selectBtn:Hide(); end
+                if r.upBtn then r.upBtn:Hide(); end
+                if r.downBtn then r.downBtn:Hide(); end
+                if r.clearBtn then r.clearBtn:Hide(); end
             end
-            if r.downBtn then
-                if sIdx == 6 then r.downBtn:Hide(); else r.downBtn:Show(); end
-            end
-            if r.clearBtn then r.clearBtn:Show(); end
 
             r.icon:SetTexture(sp.icon or "Interface\\Icons\\INV_Misc_QuestionMark");
             local sColor = SCHOOL_COLORS[sp.school] or { 1, 1, 1 };
             local isStarter, stIdx, stObj = IsClassStarter(currentClass, sp.name, sp.key, sp.icon);
             if sp.isStarter then isStarter = true; end
             local starterTag = isStarter and " |cff00ccff[Starter]|r" or "";
-            r.sName:SetText(sp.name .. starterTag .. " |cff888888(" .. (sp.school or "Physical") .. ")|r");
+            if curBuild.isCustom then
+                r.sName:SetText(sp.name .. starterTag);
+            else
+                r.sName:SetText(sp.name .. starterTag .. " |cff888888(" .. (sp.school or "Physical") .. ")|r");
+            end
             r.sName:SetTextColor(sColor[1], sColor[2], sColor[3]);
             local stDesc = (stIdx and stIdx > 0 and ("Class starter ability #" .. stIdx .. " (Action Bar Slot " .. ((stObj and stObj.slot) or stIdx) .. ")")) or "Class starter ability";
-            r.reason:SetText(sp.reason or (isStarter and stDesc or ("Custom Priority #" .. sIdx)));
+            r.reason:SetText(sp.reason or (isStarter and stDesc or ("Priority #" .. sIdx)));
 
             if isActive then
                 r.badge:SetText("|cff00ff00#" .. sIdx .. "|r");
@@ -3514,19 +3552,23 @@ function BordoUI_BuildAdvisor_Refresh()
 
             r:Show();
         else
-            -- Empty slot: show placeholder + pick button
-            if r.selectBtn then r.selectBtn:Show(); end
-            if r.upBtn then r.upBtn:Hide(); end
-            if r.downBtn then r.downBtn:Hide(); end
-            if r.clearBtn then r.clearBtn:Hide(); end
+            -- Empty slot: only relevant for custom build
+            if curBuild.isCustom then
+                if r.selectBtn then r.selectBtn:Show(); end
+                if r.upBtn then r.upBtn:Hide(); end
+                if r.downBtn then r.downBtn:Hide(); end
+                if r.clearBtn then r.clearBtn:Hide(); end
 
-            r.icon:SetTexture("Interface\\PaperDoll\\UI-PaperDoll-Slot-Relic");
-            r.sName:SetText("|cff777777[Empty Priority #" .. sIdx .. "]|r");
-            r.sName:SetTextColor(0.5, 0.5, 0.5);
-            r.reason:SetText("|cff00ff00Click row or [+ Pick] to choose a spell|r");
-            r.badge:SetText("#" .. sIdx);
-            if r.glow then r.glow:Hide(); end
-            r:Show();
+                r.icon:SetTexture("Interface\\PaperDoll\\UI-PaperDoll-Slot-Relic");
+                r.sName:SetText("|cff777777[Empty Priority #" .. sIdx .. "]|r");
+                r.sName:SetTextColor(0.5, 0.5, 0.5);
+                r.reason:SetText("|cff00ff00Click row or [+ Pick] to choose a spell|r");
+                r.badge:SetText("#" .. sIdx);
+                if r.glow then r.glow:Hide(); end
+                r:Show();
+            else
+                r:Hide();
+            end
         end
     end
 
@@ -3537,11 +3579,25 @@ function BordoUI_BuildAdvisor_Refresh()
         local itm = curBuild.jewelry and curBuild.jewelry[gInfo.key];
 
         if gr.clearBtn then
-            if itm then gr.clearBtn:Show(); else gr.clearBtn:Hide(); end
+            if curBuild.isCustom and itm then
+                gr.clearBtn:Show();
+            else
+                gr.clearBtn:Hide();
+            end
         end
 
         if itm then
-            gr.icon:SetTexture(NormalizeIconPath(itm.icon));
+            local gIcon = itm.icon;
+            if (not gIcon or gIcon == "" or string.find(gIcon, "Dragoncall")) and itm.name and BordoUI_Catalog and BordoUI_Catalog.Jewelry then
+                for _, cItm in ipairs(BordoUI_Catalog.Jewelry) do
+                    if cItm.name == itm.name and cItm.icon then
+                        gIcon = cItm.icon;
+                        itm.icon = gIcon;
+                        break;
+                    end
+                end
+            end
+            gr.icon:SetTexture(NormalizeIconPath(gIcon));
             local qColor = QUALITY_COLORS[itm.quality or 4] or { 0.64, 0.21, 0.93 };
             gr.iName:SetText(itm.name);
             gr.iName:SetTextColor(qColor[1], qColor[2], qColor[3]);
@@ -3969,10 +4025,71 @@ SlashCmdList["BORDOBUILDGUIDE"] = function(msg)
     BordoUI_ToggleBuildAdvisor();
 end;
 
+-- Texture Preloader to cache all catalog icons into memory during loading screen
+local preloaderFrame = nil;
+local function PreloadCatalogTextures()
+    if not preloaderFrame then
+        preloaderFrame = CreateFrame("Frame", "BordoUI_TexturePreloader", UIParent);
+        preloaderFrame:SetWidth(10);
+        preloaderFrame:SetHeight(10);
+        preloaderFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 5000, 5000);
+        preloaderFrame:SetAlpha(0.01);
+        preloaderFrame:Show();
+    end
+    local preloaded = {};
+    local function TouchIcon(icon)
+        if not icon or type(icon) ~= "string" or icon == "" then return; end
+        local p = NormalizeIconPath(icon);
+        if not preloaded[p] then
+            preloaded[p] = true;
+            local t = preloaderFrame:CreateTexture(nil, "BACKGROUND");
+            t:SetWidth(1);
+            t:SetHeight(1);
+            t:SetTexture(p);
+        end
+    end
+
+    if BordoUI_Catalog and BordoUI_Catalog.Jewelry then
+        for _, itm in ipairs(BordoUI_Catalog.Jewelry) do
+            TouchIcon(itm.icon);
+        end
+    end
+    if BordoUI_Catalog and BordoUI_Catalog.Spells then
+        for _, clList in pairs(BordoUI_Catalog.Spells) do
+            if type(clList) == "table" then
+                for _, sp in ipairs(clList) do
+                    TouchIcon(sp.icon);
+                end
+            end
+        end
+    end
+    if BordoUI_BuildData and BordoUI_BuildData.Builds then
+        for _, clBuilds in pairs(BordoUI_BuildData.Builds) do
+            if type(clBuilds) == "table" then
+                for _, b in ipairs(clBuilds) do
+                    if b.spells then
+                        for _, sp in ipairs(b.spells) do
+                            TouchIcon(sp.icon);
+                        end
+                    end
+                    if b.jewelry then
+                        for _, jw in pairs(b.jewelry) do
+                            if jw and jw.icon then
+                                TouchIcon(jw.icon);
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 initFrame:SetScript("OnEvent", function()
     RegisterOnTopOfScreens();
+    PreloadCatalogTextures();
     BordoUI_DetectLiveStarters();
     BordoUI_BanishedSpells = {};
     -- Deactivate Active in Run by default on startup

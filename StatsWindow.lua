@@ -171,9 +171,6 @@ headerBar:SetScript("OnMouseWheel", function()
     BordoUIDB.statsScale = cur;
     frame:SetScale(cur);
 end);
-if ( BordoUI and BordoUI.AttachLockButton ) then
-    BordoUI:AttachLockButton(frame, "TOPRIGHT", headerBar, "TOPRIGHT", -6, -4);
-end
 
 -- Build Section Categories and Rows
 local rowFrames = {};
@@ -521,11 +518,6 @@ critHeader:SetScript("OnMouseWheel", function()
     if frame then frame:SetScale(cur); end
     critFrame:SetScale(cur);
 end);
-
--- Attach universal lock button to top right
-if BordoUI and BordoUI.AttachLockButton then
-    BordoUI:AttachLockButton(critFrame, "TOPRIGHT", critHeader, "TOPRIGHT", -6, -4);
-end
 
 -- Gold divider line under header
 local critSep = CreateLine(critHeader, 1, 0.82, 0, 0.4);

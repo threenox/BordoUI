@@ -4,6 +4,31 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.16] - 2026-10-31
+
+### Added & Improved
+- **In-Place Window Resizing & Scale Controls (`Core.lua`):**
+  - Eliminated window shifting/teleporting when resizing via corner grip by anchoring top-left origin during scaling (`TOPLEFT` pinning).
+  - Added mouse wheel support to size grip: hover and scroll up/down to scale in 5% increments in-place without dragging.
+  - Added click support to size grip: left-click for -10%, right-click for +10% scaling.
+  - Added hover glow and detailed instructions tooltip to resize grip.
+  - Added drag guard on move overlay to prevent unintentional frame dragging while resizing.
+- **Dynamic Window Visibility & Magnetic Snapping Isolation (`Core.lua`, `WindowControl.lua`, `BuildList.lua`):**
+  - Windows toggled to `[OFF]` in `Bordo UI - Windows` now automatically conceal their `/bordo` move overlay.
+  - Hidden/disabled windows are completely excluded from magnetic snapping calculations, allowing active windows to be positioned freely in vacated screen space.
+  - Added real-time overlay visibility sync: toggling windows in the settings menu immediately shows/hides their move boxes without restarting `/bordo`.
+- **Damage Meter & Party Meter Split (`Meter.lua`, `Core.lua`):**
+  - Split damage meter into two distinct, independently movable and sizable frames (`Damage Done` and `Party Damage`).
+  - Decoupled mob/unit tooltip from DPS meter, cleanly defaulting to bottom-right anchor.
+- **Centralized Move Mode & Lock Controls (`Core.lua`):**
+  - Removed individual lock/padlock buttons across all frames; locking and movement are centralized in `/bordo`, `/lock`, and `/unlock`.
+  - Added global scale persistence for all UI frames via `ApplyAllWindowScales()`.
+- **Build Advisor & BiS Jewelry Fixes (`BuildData.lua`, `BuildAdvisor.lua`):**
+  - Fixed missing ring texture for Archimtiros' Ring of Reckoning (`INV_Jewelry_Ring_35`).
+  - Normalized Naxxramas jewelry icon paths and item cache initialization.
+
+---
+
 ## [2.8.15] - 2026-10-30
 
 ### Fixed & Improved

@@ -1132,9 +1132,6 @@ end)
 UI.tallyFrame:SetScript("OnMouseUp", function()
 	if arg1 == "RightButton" and MouselookStop then MouselookStop() end
 end)
-if ( BordoUI and BordoUI.AttachLockButton ) then
-	BordoUI:AttachLockButton(UI.tallyFrame, "LEFT", UI.tallyFrame, "RIGHT", 4, 0)
-end
 -- Backward compatibility reference for scripts expecting UI.bottomBar
 UI.bottomBar = UI.tallyFrame
 -- Red Skull Icon for Kills
@@ -1393,9 +1390,6 @@ CreateSquareDockButton(
 		end
 	end
 )
-if ( BordoUI and BordoUI.AttachLockButton ) then
-	BordoUI:AttachLockButton(minimapDock, "BOTTOM", minimapDock, "TOP", 0, 4)
-end
 local function UpdateBottomBar()
 	local xp = (AZS_RUN and AZS_RUN.xp) or 0
 	local xpn = (AZS_RUN and AZS_RUN.xpn) or 1

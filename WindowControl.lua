@@ -12,16 +12,19 @@ local windows = {
     { key = "party", label = "Party Frames", frame = "SurvivorUIParty" },
     { key = "kills", label = "Kills & Gold", frame = "AZSHelper_TallyFrame" },
     { key = "meter", label = "Damage Meter", frame = "BordoUIMeter" },
+    { key = "partymeter", label = "Party Damage Meter", frame = "BordoUIPartyMeter" },
     { key = "dock", label = "Minimap Buttons", frame = "BordoUI_MinimapDock" },
     { key = "chat", label = "Chat Box", frame = "BordoUI_ChatBox" },
     { key = "plates", label = "Nameplate Settings", frame = "BordoUI_NameplatesWindow" },
     { key = "damage", label = "Damage Text Settings", frame = "BordoUI_DamageNumbersFrame" },
     { key = "lowhp", label = "Low-Health Warning", frame = "BordoUI_LowHealthFrame" },
     { key = "character", label = "Character Panel", frame = "SurvivorUICharacter" },
+    { key = "tooltip", label = "Mob / Unit Tooltip", frame = "BordoUI_TooltipAnchor" },
     { key = "guide", label = "Builds", frame = "BordoUI_BuildAdvisorFrame", transient = true },
     { key = "death", label = "Death Recap", frame = "AZSHelper_DeathRecapFrame", transient = true },
     { key = "runrecap", label = "Run Summary", frame = "BordoUI_RunRecapFrame", transient = true },
-    { key = "loot", label = "Loot Alert", frame = "BordoUI_LootAlertFrame", transient = true }
+    { key = "loot", label = "Loot Alert", frame = "BordoUI_LootAlertFrame", transient = true },
+    { key = "procs", label = "Procs & Buffs HUD", frame = "BordoUI_ProcTrackerFrame" }
 };
 
 -- The dock panel intentionally exposes only the windows requested by the user.
@@ -29,7 +32,10 @@ local panelWindows = {
     { key = "stats", label = "Stats", frame = "BordoUI_StatsWindowFrame" },
     { key = "crit", label = "Highest Crit", frame = "BordoUI_HighestCritFrame" },
     { key = "build", label = "Build & Jewelry", frame = "SurvivorUIBuild" },
+    { key = "meter", label = "Damage Meter", frame = "BordoUIMeter" },
+    { key = "partymeter", label = "Party Damage Meter", frame = "BordoUIPartyMeter" },
     { key = "chat", label = "Chat Box", frame = "BordoUI_ChatBox" },
+    { key = "tooltip", label = "Mob / Unit Tooltip", frame = "BordoUI_TooltipAnchor" },
     { key = "guide", label = "Builds", frame = "BordoUI_BuildAdvisorFrame", transient = true },
     { key = "death", label = "Death Recap", frame = "AZSHelper_DeathRecapFrame", transient = true },
     { key = "runrecap", label = "Run Summary", frame = "BordoUI_RunRecapFrame", transient = true },
@@ -54,6 +60,31 @@ local function SetWindow(def, enabled, quiet)
     if def.key == "crit" then BordoUIDB.showHighestCrit = enabled and true or false; end
     if def.key == "table" then BordoUIDB.statsTable = enabled and true or false; end
     if def.key == "meter" then BordoUIDB.meter = enabled and true or false; end
+    if def.key == "build" then
+        BordoUIDB.buildList = enabled and true or false;
+        if SurvivorUI_GameHud and SurvivorUI_GameHud.build then
+            SurvivorUI_GameHud.build();
+        end
+    end
+    if def.key == "procs" then
+        BordoUIDB.procTracker = enabled and true or false;
+    end
+    if def.key == "partymeter" then
+        BordoUIDB.partyMeter = enabled and true or false;
+        if BordoUI_PartyMeterFrame then
+            if enabled then
+                if BordoUI_DrawPartyMeter then BordoUI_DrawPartyMeter(); end
+            else
+                BordoUI_PartyMeterFrame:Hide();
+            end
+        end
+    end
+    if def.key == "tooltip" then
+        BordoUIDB.showTooltip = enabled and true or false;
+        if not enabled and GameTooltip then
+            GameTooltip:Hide();
+        end
+    end
 
     local frame = getglobal(def.frame);
     if frame then
@@ -66,6 +97,9 @@ local function SetWindow(def, enabled, quiet)
     if not quiet and DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: " .. def.label .. " " .. (enabled and "|cff55ff55enabled|r." or "|cffff5555disabled|r."));
     end
+    if BordoUI and BordoUI.UpdateMoveOverlaysVisibility then
+        BordoUI:UpdateMoveOverlaysVisibility();
+    end
 end
 
 -- Public API used by the minimap Windows panel.
@@ -74,7 +108,35 @@ function BordoUI:GetWindowControlList()
 end
 
 function BordoUI:IsWindowEnabled(key)
-    return Saved()[key] ~= false;
+    local states = Saved();
+    if states[key] ~= nil then
+        return states[key] ~= false;
+    end
+    if key == "build" and BordoUIDB and BordoUIDB.buildList ~= nil then
+        return BordoUIDB.buildList ~= false;
+    end
+    if key == "meter" and BordoUIDB and BordoUIDB.meter ~= nil then
+        return BordoUIDB.meter ~= false;
+    end
+    if key == "partymeter" and BordoUIDB and BordoUIDB.partyMeter ~= nil then
+        return BordoUIDB.partyMeter ~= false;
+    end
+    if key == "stats" and BordoUIDB and BordoUIDB.showStats ~= nil then
+        return BordoUIDB.showStats ~= false;
+    end
+    if key == "crit" and BordoUIDB and BordoUIDB.showHighestCrit ~= nil then
+        return BordoUIDB.showHighestCrit ~= false;
+    end
+    if key == "table" and BordoUIDB and BordoUIDB.statsTable ~= nil then
+        return BordoUIDB.statsTable ~= false;
+    end
+    if key == "tooltip" and BordoUIDB and BordoUIDB.showTooltip ~= nil then
+        return BordoUIDB.showTooltip ~= false;
+    end
+    if key == "procs" and BordoUIDB and BordoUIDB.procTracker ~= nil then
+        return BordoUIDB.procTracker ~= false;
+    end
+    return true;
 end
 
 function BordoUI:SetWindowEnabled(key, enabled)
@@ -90,7 +152,7 @@ local function CreateWindowsPanel()
 
     local panel = CreateFrame("Frame", "BordoUI_WindowsPanel", UIParent);
     panel:SetWidth(470);
-    panel:SetHeight(220);
+    panel:SetHeight(235);
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
     panel:SetFrameStrata("DIALOG");
     panel:SetToplevel(true);
@@ -122,10 +184,12 @@ local function CreateWindowsPanel()
     hint:SetTextColor(0.8, 0.8, 0.8);
 
     panel.windowRows = {};
-    for i = 1, table.getn(panelWindows) do
+    local total = table.getn(panelWindows);
+    local perCol = math.ceil(total / 2);
+    for i = 1, total do
         local def = panelWindows[i];
-        local col = i > 4 and 2 or 1;
-        local row = i > 4 and (i - 4) or i;
+        local col = i > perCol and 2 or 1;
+        local row = i > perCol and (i - perCol) or i;
         local x = col == 1 and 16 or 247;
         local y = -62 - ((row - 1) * 30);
 

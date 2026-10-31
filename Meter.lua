@@ -112,10 +112,6 @@ meter:EnableMouse(true)
 meter:RegisterForDrag("LeftButton")
 meter:Hide()
 
-if BordoUI and BordoUI.AttachLockButton then
-	BordoUI:AttachLockButton(meter, "TOPRIGHT", meter, "TOPRIGHT", -4, -2)
-end
-
 -- Right-Click Pass-Through for Camera Mouse Look
 meter:SetScript("OnMouseDown", function()
 	if arg1 == "RightButton" and MouselookStart then
@@ -128,6 +124,120 @@ meter:SetScript("OnMouseUp", function()
 	end
 end)
 
+------------------------------------------------------------------------------
+-- Dedicated Party Damage Meter Frame (Bottom Frame)
+-- Always displays party member damage comparison in co-op runs, docked
+-- directly beneath the main Damage Meter (or movable/snappable in /bordo).
+------------------------------------------------------------------------------
+local partyMeter = CreateFrame("Frame", "BordoUIPartyMeter", UIParent)
+partyMeter:SetWidth(WIDTH + 8)
+partyMeter:SetHeight(40)
+partyMeter:SetPoint("TOPLEFT", meter, "BOTTOMLEFT", 0, -6)
+partyMeter:SetBackdrop({
+	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	tile     = true,
+	tileSize = 12,
+	edgeSize = 8,
+	insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+})
+partyMeter:SetBackdropColor(0.04, 0.04, 0.06, 0.90)
+partyMeter:SetBackdropBorderColor(0.15, 0.15, 0.20, 0.95)
+BordoUI_PartyMeterFrame = partyMeter
+SurvivorUIPartyMeter = partyMeter
+partyMeter:SetMovable(true)
+partyMeter:EnableMouse(true)
+partyMeter:RegisterForDrag("LeftButton")
+partyMeter:Hide()
+
+partyMeter:SetScript("OnMouseDown", function()
+	if arg1 == "RightButton" and MouselookStart then
+		MouselookStart()
+	end
+end)
+partyMeter:SetScript("OnMouseUp", function()
+	if arg1 == "RightButton" and MouselookStop then
+		MouselookStop()
+	end
+end)
+
+local PARTY_BARS_TOP = 20
+
+partyMeter.title = partyMeter:CreateFontString(nil, "OVERLAY")
+partyMeter.title:SetFont(SurvivorUI_FONT, 11 + FONT_BUMP, "OUTLINE")
+partyMeter.title:SetPoint("LEFT", partyMeter, "TOPLEFT", 6, -11)
+partyMeter.title:SetTextColor(1, 0.82, 0)
+partyMeter.title:SetText("Party Damage")
+
+partyMeter.stats = partyMeter:CreateFontString(nil, "OVERLAY")
+partyMeter.stats:SetFont(SurvivorUI_FONT, 10 + FONT_BUMP, "OUTLINE")
+partyMeter.stats:SetPoint("RIGHT", partyMeter, "TOPRIGHT", -6, -11)
+partyMeter.stats:SetTextColor(1, 1, 1)
+partyMeter.stats:SetText("")
+
+partyMeter.empty = partyMeter:CreateFontString(nil, "OVERLAY")
+partyMeter.empty:SetFont(SurvivorUI_FONT, 10 + FONT_BUMP, "OUTLINE")
+partyMeter.empty:SetPoint("CENTER", partyMeter, "CENTER", 0, -6)
+partyMeter.empty:SetTextColor(0.45, 0.45, 0.48)
+partyMeter.empty:SetText("No party damage yet.")
+partyMeter.empty:Hide()
+
+local isPartyDragging = false
+local partyBars = {}
+local DrawPartyMeter -- forward declaration
+local FitParty -- forward declaration
+
+local function SavePartyPlace()
+	local right = partyMeter:GetRight()
+	local bottom = partyMeter:GetBottom()
+	if not (right and bottom) then return end
+	local uRight = (UIParent and UIParent:GetRight()) or 1024
+	local uBottom = (UIParent and UIParent:GetBottom()) or 0
+	local offsetX = math.floor((right - uRight) + 0.5)
+	local offsetY = math.floor((bottom - uBottom) + 0.5)
+	if offsetX > 0 then offsetX = 0 end
+	if offsetY < 0 then offsetY = 0 end
+
+	local pos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = offsetX, y = offsetY, isCustom = true }
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.partyMeterPos = pos
+	BordoUIDB.partyMeterIsCustom = true
+	partyMeter:ClearAllPoints()
+	partyMeter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", offsetX, offsetY)
+end
+BordoUI_SavePartyMeterPlace = SavePartyPlace
+
+local function StartPartyMove()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		isPartyDragging = true
+		partyMeter:StartMoving()
+	end
+end
+
+local function StopPartyMove()
+	partyMeter:StopMovingOrSizing()
+	isPartyDragging = false
+	SavePartyPlace()
+end
+
+partyMeter:SetScript("OnDragStart", StartPartyMove)
+partyMeter:SetScript("OnDragStop", StopPartyMove)
+
+FitParty = function()
+	if isPartyDragging then return end
+	local isCustom = BordoUIDB and BordoUIDB.partyMeterIsCustom and BordoUIDB.partyMeterPos
+	if isCustom then
+		local pos = BordoUIDB.partyMeterPos
+		if pos and pos.point then
+			partyMeter:ClearAllPoints()
+			partyMeter:SetPoint(pos.point, UIParent, pos.relativePoint or pos.point, pos.x or 0, pos.y or 0)
+			return
+		end
+	end
+	partyMeter:ClearAllPoints()
+	partyMeter:SetPoint("TOPLEFT", meter, "BOTTOMLEFT", 0, -6)
+end
+
 function BordoUI_SetMeterScale(scale)
 	scale = tonumber(scale) or 1.0
 	if scale < 0.55 then scale = 0.55 end
@@ -136,6 +246,9 @@ function BordoUI_SetMeterScale(scale)
 	BordoUIDB.meterScale = scale
 	if meter then
 		meter:SetScale(scale)
+	end
+	if partyMeter then
+		partyMeter:SetScale(scale)
 	end
 end
 
@@ -215,7 +328,21 @@ local function UpdateMeterWidth(newWidth)
 			b.name:SetWidth(room)
 		end
 	end
+	if partyMeter then
+		partyMeter:SetWidth(currentWidth + 8)
+		for index = 1, table.getn(partyBars or {}) do
+			local pb = partyBars[index]
+			if pb then
+				pb:SetWidth(currentWidth)
+				pb.edgeWidth = nil
+				pb.name:SetWidth(NAME_ROOM)
+			end
+		end
+	end
 end
+
+BordoUI_SetMeterLines = SetLines
+BordoUI_UpdateMeterWidth = UpdateMeterWidth
 
 local function Seat(key, point, relative, relativePoint, x, y)
 	if seatedOn ~= key then
@@ -295,12 +422,33 @@ meterResizeGrip.lines = {}
 for rIdx = 1, 3 do
 	local line = meterResizeGrip:CreateTexture(nil, "OVERLAY")
 	line:SetTexture(FLAT)
-	line:SetVertexColor(1, 0.82, 0, 0.85)
+	line:SetVertexColor(0.0, 0.75, 1.0, 0.85) -- Bordo cyan/blue
 	line:SetHeight(2)
 	line:SetWidth(4 * rIdx + 2)
 	line:SetPoint("BOTTOMRIGHT", meterResizeGrip, "BOTTOMRIGHT", 0, (rIdx - 1) * 4)
 	table.insert(meterResizeGrip.lines, line)
 end
+meterResizeGrip:Hide() -- Only shown in MoveMode!
+
+function BordoUI_UpdateMeterResizeGrip()
+	if not meterResizeGrip then return end
+	if BordoUI and BordoUI.moveModeActive and meter and meter:IsShown() then
+		meterResizeGrip:Show()
+	else
+		meterResizeGrip:Hide()
+	end
+end
+
+meter:SetScript("OnShow", function()
+	if BordoUI_UpdateMeterResizeGrip then
+		BordoUI_UpdateMeterResizeGrip()
+	end
+end)
+meter:SetScript("OnHide", function()
+	if BordoUI_UpdateMeterResizeGrip then
+		BordoUI_UpdateMeterResizeGrip()
+	end
+end)
 
 -- Left-click drag sizing only: no right-click, no accidental click-reset!
 meterResizeGrip:SetScript("OnMouseDown", function()
@@ -327,6 +475,7 @@ meterResizeGrip:SetScript("OnMouseUp", function()
 		BordoUIDB.meterLines = fitLines
 		SavePlace()
 		if Draw then Draw() end
+		if DrawPartyMeter then DrawPartyMeter() end
 	end
 end)
 
@@ -343,6 +492,7 @@ meter:SetScript("OnSizeChanged", function()
 			SetLines(fitLines)
 		end
 		if Draw then Draw() end
+		if DrawPartyMeter then DrawPartyMeter() end
 	end
 end)
 
@@ -365,16 +515,11 @@ meter:SetScript("OnDragStop", StopMove)
 -- What the meter shows: the run's damage, its healing, or the last boss
 -- fight's damage to bosses. The title opens a menu of them; a view the game
 -- does not share (an older game) is greyed out there.
+-- Party damage is separated into its own dedicated frame below.
 local VIEWS = {
 	{ key = "damage", title = "Damage Done", get = function() return AZS_GetMeter end },
 	{ key = "healing", title = "Healing Done", get = function() return AZS_GetHealing end },
 	{ key = "boss", title = "Boss Damage", get = function() return AZS_GetBossMeter end },
-	-- A co-op run's: each hero's damage. Greyed out of a party.
-	{ key = "party", title = "Party Damage", get = function()
-		if AZS_GetPartyMeter and AZS_PARTY and table.getn(AZS_PARTY) > 0 then
-			return AZS_GetPartyMeter
-		end
-	end },
 }
 local view = 1
 
@@ -1542,6 +1687,263 @@ local function PartyLine(shown, line)
 	end
 end
 
+local function PartyBar(index)
+	local bar = partyBars[index]
+	if bar then
+		return bar
+	end
+	bar = CreateFrame("StatusBar", nil, partyMeter)
+	bar:SetWidth(currentWidth)
+	bar:SetHeight(BAR_HEIGHT)
+	bar:SetStatusBarTexture(FLAT)
+	bar:SetMinMaxValues(0, 1)
+
+	bar.backing = bar:CreateTexture(nil, "BACKGROUND")
+	bar.backing:SetTexture(FLAT)
+	bar.backing:SetVertexColor(0.05, 0.05, 0.07, 0.92)
+	bar.backing:SetAllPoints(bar)
+	bar.edges = {}
+	for _, side in pairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+		local line = bar:CreateTexture(nil, "OVERLAY")
+		line:SetTexture(FLAT)
+		if side == "TOP" or side == "BOTTOM" then
+			line:SetHeight(1)
+			line:SetPoint(side.."LEFT", bar, side.."LEFT", 0, 0)
+			line:SetPoint(side.."RIGHT", bar, side.."RIGHT", 0, 0)
+		else
+			line:SetWidth(1)
+			line:SetPoint("TOP"..side, bar, "TOP"..side, 0, 0)
+			line:SetPoint("BOTTOM"..side, bar, "BOTTOM"..side, 0, 0)
+		end
+		table.insert(bar.edges, line)
+	end
+	for _, from in pairs({ AMOUNT_RIGHT + AMOUNT_WIDTH + 2, SHARE_WIDTH + 2 }) do
+		local divider = bar:CreateTexture(nil, "OVERLAY")
+		divider:SetTexture(FLAT)
+		divider:SetVertexColor(1, 1, 1, 0.14)
+		divider:SetWidth(1)
+		divider:SetPoint("TOP", bar, "TOPRIGHT", -from, 0)
+		divider:SetPoint("BOTTOM", bar, "BOTTOMRIGHT", -from, 0)
+	end
+
+	bar.name = bar:CreateFontString(nil, "OVERLAY")
+	bar.name:SetFont(SurvivorUI_FONT, 9 + FONT_BUMP, "OUTLINE")
+
+	bar.icon = bar:CreateTexture(nil, "OVERLAY")
+	bar.icon:SetWidth(BAR_HEIGHT - 4)
+	bar.icon:SetHeight(BAR_HEIGHT - 4)
+	bar.icon:SetPoint("LEFT", bar, "LEFT", 2, 0)
+	bar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+	bar.name:SetPoint("LEFT", bar, "LEFT", BAR_HEIGHT + 2, 0)
+	bar.name:SetWidth(NAME_ROOM)
+	bar.name:SetHeight(12)
+	bar.name:SetJustifyH("LEFT")
+	bar.name:SetTextColor(1, 1, 1)
+
+	bar.value = bar:CreateFontString(nil, "OVERLAY")
+	bar.value:SetFont(SurvivorUI_FONT, 9 + FONT_BUMP, "OUTLINE")
+	bar.value:SetPoint("RIGHT", bar, "RIGHT", -AMOUNT_RIGHT, 0)
+	bar.value:SetTextColor(1, 1, 1)
+
+	bar.share = bar:CreateFontString(nil, "OVERLAY")
+	bar.share:SetFont(SurvivorUI_FONT, 8 + FONT_BUMP, "OUTLINE")
+	bar.share:SetPoint("RIGHT", bar, "RIGHT", -3, 0)
+	bar.share:SetTextColor(0.85, 0.85, 0.85)
+
+	bar:EnableMouse(true)
+	bar:SetScript("OnEnter", function()
+		if this.line then
+			GameTooltip:SetOwner(partyMeter, "ANCHOR_NONE")
+			GameTooltip:SetPoint("TOPRIGHT", partyMeter, "TOPLEFT", -4, 0)
+			GameTooltip:SetText(this.line.name, (this.color and this.color[1]) or 1, (this.color and this.color[2]) or 0.82, (this.color and this.color[3]) or 0)
+			GameTooltip:AddDoubleLine("Damage", Short(this.line.dmg), 0.8, 0.8, 0.8, 1, 1, 1)
+			GameTooltip:AddDoubleLine("Share", math.floor((this.line.share or 0) * 100 + 0.5).."%", 0.8, 0.8, 0.8, 1, 1, 1)
+			GameTooltip:AddDoubleLine("Damage per second", Short(this.line.dps or 0), 0.8, 0.8, 0.8, 1, 1, 1)
+			if this.line.top and this.line.top ~= "" then
+				GameTooltip:AddDoubleLine("Top spell", this.line.top..(this.line.topdps and this.line.topdps > 0 and ("  ("..Short(this.line.topdps).." dps)") or ""), 0.8, 0.8, 0.8, 1, 0.82, 0)
+			end
+			GameTooltip:Show()
+		end
+	end)
+	bar:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+	bar:RegisterForDrag("LeftButton")
+	bar:SetScript("OnDragStart", StartPartyMove)
+	bar:SetScript("OnDragStop", StopPartyMove)
+	bar:SetScript("OnMouseDown", function()
+		if arg1 == "RightButton" and MouselookStart then
+			MouselookStart()
+		end
+	end)
+	bar:SetScript("OnMouseUp", function()
+		if arg1 == "RightButton" and MouselookStop then
+			MouselookStop()
+		end
+	end)
+
+	partyBars[index] = bar
+	return bar
+end
+
+local function GetPartyMeterData()
+	if AZS_GetPartyMeter then
+		local lines, total, rate = AZS_GetPartyMeter()
+		if lines and table.getn(lines) > 0 then
+			local shown, sum = {}, 0
+			for index = 1, table.getn(lines) do
+				local line = lines[index]
+				local d = Num(line.dmg)
+				sum = sum + d
+				local entry = { name = line.name or "?", dmg = d, share = Num(line.share), dps = Num(line.dps) }
+				PartyLine(entry, line)
+				table.insert(shown, entry)
+			end
+			total = Num(total)
+			if total <= 0 and sum > 0 then total = sum end
+			rate = Num(rate)
+			if rate <= 0 and total > 0 then
+				local t = RunSeconds()
+				rate = (t and t > 0) and (total / t) or total
+			end
+			table.sort(shown, function(a, b) return (a.dmg or 0) > (b.dmg or 0) end)
+			return shown, total, rate, true
+		end
+	end
+	return {}, 0, 0, false
+end
+
+local function GetMockPartyMeterData()
+	local mock = {
+		{ name = "Sekuhara", class = "MAGE", dmg = 256500, share = 0.30, dps = 2450, top = "Pyroblast", topdps = 1420 },
+		{ name = "Lh\195\175ebig", class = "PALADIN", dmg = 250500, share = 0.29, dps = 2390, top = "Consecration", topdps = 1200 },
+		{ name = "Torakos", class = "WARRIOR", dmg = 145900, share = 0.17, dps = 1390, top = "Whirlwind", topdps = 890 },
+		{ name = "Spcr", class = "PALADIN", dmg = 144900, share = 0.17, dps = 1380, top = "Hammer of Wrath", topdps = 750 },
+		{ name = "Evelynn", class = "HUNTER", dmg = 54400, share = 0.06, dps = 520, top = "Multi-Shot", topdps = 380 },
+	}
+	local shown = {}
+	for i = 1, table.getn(mock) do
+		local m = mock[i]
+		local entry = { name = m.name, dmg = m.dmg, share = m.share, dps = m.dps, top = m.top, topdps = m.topdps }
+		PartyLine(entry, m)
+		table.insert(shown, entry)
+	end
+	return shown, 852200, 7590, true
+end
+
+DrawPartyMeter = function()
+	local enabled = (BordoUIDB and BordoUIDB.partyMeter ~= false)
+	local moveMode = (BordoUI and BordoUI.moveModeActive)
+	local inParty = (AZS_PARTY and table.getn(AZS_PARTY) > 0) or (GetNumPartyMembers and GetNumPartyMembers() > 0)
+
+	local lines, total, dps, hasData = GetPartyMeterData()
+	if (not hasData or table.getn(lines) == 0) and moveMode then
+		lines, total, dps, hasData = GetMockPartyMeterData()
+	end
+
+	if not enabled or (not hasData and not inParty and not moveMode) then
+		if partyMeter:IsShown() then
+			partyMeter:Hide()
+		end
+		return
+	end
+
+	if not partyMeter:IsShown() then
+		partyMeter:Show()
+	end
+
+	FitParty()
+	partyMeter:SetWidth(currentWidth + 8)
+	partyMeter.stats:SetText("|cffffd100DPS|r " .. Short(dps) .. "   |cffaaaaaaTOTAL|r " .. Short(total))
+
+	local count = table.getn(lines)
+	if count == 0 then
+		partyMeter:SetHeight(40)
+		partyMeter.empty:SetText("No party damage yet.")
+		partyMeter.empty:Show()
+		for i = 1, table.getn(partyBars) do
+			partyBars[i]:Hide()
+		end
+		return
+	else
+		partyMeter.empty:Hide()
+	end
+
+	local top = count > 0 and lines[1].dmg or 0
+	partyMeter:SetHeight(PARTY_BARS_TOP + 4 + count * (BAR_HEIGHT + BAR_GAP))
+
+	for index = 1, count do
+		local line = lines[index]
+		local name = line.name
+		local color = line.color or { 0.6, 0.6, 0.6 }
+		local bar = PartyBar(index)
+
+		bar:ClearAllPoints()
+		bar:SetPoint("TOPLEFT", partyMeter, "TOPLEFT", 4, -PARTY_BARS_TOP - (index - 1) * (BAR_HEIGHT + BAR_GAP))
+		bar:SetWidth(currentWidth)
+
+		local share = top > 0 and line.dmg / top or 0
+		bar:SetValue(Filled(share))
+		bar:SetStatusBarColor(color[1], color[2], color[3], 0.45)
+		for _, edge in pairs(bar.edges) do
+			edge:SetVertexColor(color[1], color[2], color[3], 0.6)
+		end
+		PlaceEdges(bar, share)
+
+		bar.line = line
+		bar.color = color
+
+		local icon = line.art
+		bar.icon:SetVertexColor(1, 1, 1)
+		if line.coords then
+			bar.icon:SetTexture(icon)
+			bar.icon:SetTexCoord(line.coords[1], line.coords[2], line.coords[3], line.coords[4])
+		elseif icon then
+			bar.icon:SetTexture(icon)
+			bar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		else
+			bar.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+			bar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		end
+
+		bar.name:SetWidth(NAME_ROOM)
+		bar.name:SetText(name)
+		bar.value:SetText(Short(line.dmg))
+		bar.share:SetText(math.floor((line.share or 0) * 100 + 0.5).."%")
+		bar:Show()
+	end
+
+	for index = count + 1, table.getn(partyBars) do
+		partyBars[index]:Hide()
+	end
+end
+
+BordoUI_DrawPartyMeter = DrawPartyMeter
+
+function BordoUI_TogglePartyMeter()
+	BordoUIDB = BordoUIDB or {}
+	local isShown = (BordoUIDB.partyMeter ~= false and partyMeter:IsShown())
+	local newState = not isShown
+	BordoUIDB.partyMeter = newState
+	if newState then
+		FitParty()
+		DrawPartyMeter()
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Party Damage Meter |cff55ff55shown|r.")
+	else
+		partyMeter:Hide()
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Party Damage Meter |cffff5555hidden|r.")
+	end
+end
+
+function BordoUI_ResetPartyMeterPosition()
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.partyMeterPos = nil
+	BordoUIDB.partyMeterIsCustom = nil
+	partyMeter:ClearAllPoints()
+	partyMeter:SetPoint("TOPLEFT", meter, "BOTTOMLEFT", 0, -6)
+end
+
 local function OtherLines(get)
 	local fn = get and get()
 	if not fn then return {}, 0, 0 end
@@ -1745,8 +2147,9 @@ watcher:SetScript("OnUpdate", function()
 	end
 	elapsed = 0
 	Fit()
+	if FitParty then FitParty() end
 	-- The view chosen last time, once the saved settings are in and the game
-	-- shares it (Party Damage: in a party).
+	-- shares it.
 	if not viewRestored and SurvivorUIDB then
 		local known = false
 		for index = 1, table.getn(VIEWS) do
@@ -1761,8 +2164,7 @@ watcher:SetScript("OnUpdate", function()
 		viewRestored = viewRestored or not known
 	end
 	if Settings().meter then
-		-- A view gone (the party left): the damage for now, the choice
-		-- kept for when it comes back.
+		-- A view gone: the damage for now, the choice kept for when it comes back.
 		if not VIEWS[view].get() then
 			SetView(1, true)
 			viewRestored = false
@@ -1772,10 +2174,13 @@ watcher:SetScript("OnUpdate", function()
 			meter:Show()
 			-- The title's width is known once it is drawn.
 			FitTitle()
+			if BordoUI_UpdateMeterResizeGrip then BordoUI_UpdateMeterResizeGrip() end
 		end
 	elseif meter:IsShown() then
 		meter:Hide()
+		if BordoUI_UpdateMeterResizeGrip then BordoUI_UpdateMeterResizeGrip() end
 	end
+	if DrawPartyMeter then DrawPartyMeter() end
 end)
 
 ------------------------------------------------------------------------------
@@ -1862,6 +2267,9 @@ function BordoUI_ResetMeterPosition()
 		SetLines(MAX_LINES)
 		Fit()
 	end
+	if BordoUI_ResetPartyMeterPosition then
+		BordoUI_ResetPartyMeterPosition()
+	end
 end
 
 -- The game's tooltip for units and the world: it opens at an anchor of its own
@@ -1877,14 +2285,11 @@ if tipAnchor.SetClampedToScreen then
 end
 
 local function PlaceTipAnchor()
-	local settings = Settings()
 	tipAnchor:ClearAllPoints()
-	if settings.tipRight then
-		tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", settings.tipRight, settings.tipBottom)
-	elseif meter:IsVisible() then
-		tipAnchor:SetPoint("BOTTOMRIGHT", meter, "BOTTOMLEFT", -6, 0)
+	if BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point and BordoUI and BordoUI.RestorePosition then
+		BordoUI:RestorePosition(tipAnchor, BordoUIDB.tooltipPos)
 	else
-		tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -13, 64)
+		tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26)
 	end
 end
 
@@ -1897,6 +2302,10 @@ end
 local stockDefaultAnchor = GameTooltip_SetDefaultAnchor
 if stockDefaultAnchor then
 	GameTooltip_SetDefaultAnchor = function(tooltip, parent)
+		if ( BordoUI and BordoUI.IsWindowEnabled and not BordoUI:IsWindowEnabled("tooltip") ) then
+			if tooltip then tooltip:Hide(); end
+			return;
+		end
 		stockDefaultAnchor(tooltip, parent)
 		if tooltip then
 			PlaceTipAnchor()
@@ -1938,6 +2347,9 @@ loader:SetScript("OnEvent", function()
 		BordoUI_SetMeterScale(BordoUIDB.meterScale)
 	end
 	Fit()
+	if FitParty then FitParty() end
+	if DrawPartyMeter then DrawPartyMeter() end
+	if BordoUI_UpdateMeterResizeGrip then BordoUI_UpdateMeterResizeGrip() end
 	ApplyGameHud()
 end)
 

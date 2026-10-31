@@ -518,9 +518,6 @@ btnCollapse:SetPoint("RIGHT", btnClose, "LEFT", -2, 0);
 local btnCollapseText = btnCollapse:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 btnCollapseText:SetPoint("CENTER", btnCollapse, "CENTER", 0, 0);
 btnCollapseText:SetText("[-]");
-if ( BordoUI and BordoUI.AttachLockButton ) then
-    BordoUI:AttachLockButton(mainFrame, "RIGHT", btnCollapse, "LEFT", -4, 0);
-end
 -- Scale [+] Button
 local btnPlus = CreateFrame("Button", nil, header);
 btnPlus:SetWidth(16);
@@ -736,9 +733,6 @@ local function SetCollapsed(collapsed)
         helpText:Show();
         mainFrame:SetHeight(360);
         btnCollapseText:SetText("[-]");
-if ( BordoUI and BordoUI.AttachLockButton ) then
-    BordoUI:AttachLockButton(mainFrame, "RIGHT", btnCollapse, "LEFT", -4, 0);
-end
         AZSHelper:UpdateStatsTable();
     end
 end
