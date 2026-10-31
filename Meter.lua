@@ -416,7 +416,7 @@ end
 local meterResizeGrip = CreateFrame("Button", "BordoUIMeterResizeGrip", meter)
 meterResizeGrip:SetWidth(16)
 meterResizeGrip:SetHeight(16)
-meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -1, 1)
+meterResizeGrip:SetPoint("BOTTOMRIGHT", meter, "BOTTOMRIGHT", -4, 4)
 meterResizeGrip:SetFrameLevel(meter:GetFrameLevel() + 25)
 meterResizeGrip.lines = {}
 for rIdx = 1, 3 do

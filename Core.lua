@@ -5,7 +5,7 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.8.16";
+BordoUI.version = "2.8.17";
 -- Unit & Mob Tooltip: Anchor world/unit/add tooltips to bottom-right (or custom position)
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
@@ -676,7 +676,7 @@ local function CreateMoveOverlay(targetFrame, labelText, saveFunc, scaleKey, tar
     local grip = CreateFrame("Button", nil, overlay);
     grip:SetWidth(20);
     grip:SetHeight(20);
-    grip:SetPoint("BOTTOMRIGHT", overlay, "BOTTOMRIGHT", -1, 1);
+    grip:SetPoint("BOTTOMRIGHT", overlay, "BOTTOMRIGHT", -4, 4);
     grip:SetFrameLevel(overlay:GetFrameLevel() + 20);
     grip:EnableMouse(true);
     grip:EnableMouseWheel(true);

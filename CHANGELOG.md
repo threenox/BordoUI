@@ -4,6 +4,14 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.17] - 2026-10-31
+
+### Improved
+- **Resize Grip Positioning (`Core.lua`, `Meter.lua`):**
+  - Adjusted bottom-right corner resize grip offset to `(-4, 4)` (from `(-1, 1)`), preventing the 3-line blue icon from feeling squished against window borders.
+
+---
+
 ## [2.8.16] - 2026-10-31
 
 ### Added & Improved
