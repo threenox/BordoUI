@@ -4,6 +4,27 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.18] - 2026-10-31
+
+### Fixed & Improved
+- **Compact Mob/Unit Tooltip Sizing (`AbilityTooltip.lua`):**
+  - Eliminated the forced 440px wide black box on unit/mob tooltips that left huge dead black margins and overextended health bars.
+  - Dynamically fits tooltip width to content (`widest line + 24px`, clamped compactly to min 120px) on `OnShow`, `SetUnit`, `SetUnitBuff`, and `SetUnitDebuff`.
+  - Preserved wrapped wide descriptions for abilities/spells while ensuring mobs and items remain compact and snug.
+- **Mob Tooltip Anchor & Chat Box Overlap Fix (`Meter.lua`, `Core.lua`):**
+  - Unified `tipAnchor` to `BordoUI_TooltipAnchor` and switched anchor point from `BOTTOMRIGHT` to `BOTTOMLEFT`.
+  - When placed to the right of Chat, the tooltip expands rightward into open space instead of stretching backwards into the Chat box.
+- **New Default Layout & Reset (`Core.lua`, `Meter.lua`):**
+  - Standard bottom row layout aligned at baseline `y = 26`:
+    - `Chat Window`: `BOTTOMLEFT, 14, 26`
+    - `Mob Tooltip`: `BOTTOMLEFT, 406, 26` (directly to the right of Chat)
+    - `Party Damage Meter`: `BOTTOMRIGHT, -242, 26` (to the left of Damage Done)
+    - `Damage Done Meter`: `BOTTOMRIGHT, -12, 26`
+  - Restored by `/bordo reset` and the `[Reset Default Layout]` button.
+  - Automatic migration for existing profiles using old bottom-right tooltip default coordinates.
+
+---
+
 ## [2.8.17] - 2026-10-31
 
 ### Improved

@@ -105,10 +105,6 @@ local function StyleTooltip(tip)
 	if not tip then return end
 	if tip.EnableMouse then tip:EnableMouse(false) end
 	tip:SetScale(0.80)
-	-- A predictable width gives long descriptions room to wrap instead of
-	-- being clipped by the tooltip's automatic single-line sizing.
-	local screenWidth = UIParent and UIParent:GetWidth() or 1024
-	tip:SetWidth(math.min(440, math.max(280, screenWidth - 48)))
 	tip:SetBackdrop({
 		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -125,14 +121,14 @@ local function StyleTooltip(tip)
 end
 
 local function WrapTooltipLines(tip)
-	local innerWidth = math.max(120, (tip:GetWidth() or 320) - 24)
+	local innerWidth = math.max(96, (tip:GetWidth() or 200) - 24)
 	for line = 1, tip:NumLines() do
 		local left = getglobal("GameTooltipTextLeft"..line)
 		local right = getglobal("GameTooltipTextRight"..line)
 		if left and left:IsShown() and left.SetWidth then
 			local width = innerWidth
 			if right and right:IsShown() and right.GetStringWidth then
-				width = math.max(80, innerWidth - right:GetStringWidth() - 12)
+				width = math.max(60, innerWidth - right:GetStringWidth() - 12)
 			end
 			left:SetWidth(width)
 			if left.SetWordWrap then left:SetWordWrap(true) end
@@ -171,7 +167,7 @@ local function FitTooltipWidth(tip)
 		if width > widest then widest = width end
 	end
 	local screenWidth = UIParent and UIParent:GetWidth() or 1024
-	tip:SetWidth(math.min(440, math.max(180, math.min(widest + 30, screenWidth - 48))))
+	tip:SetWidth(math.min(420, math.max(120, math.min(widest + 24, screenWidth - 48))))
 end
 
 -- Some clients truncate a long GameTooltip line with an ellipsis before
@@ -444,6 +440,8 @@ end
 
 local function Write(ability)
 	StyleTooltip(GameTooltip)
+	local screenWidth = UIParent and UIParent:GetWidth() or 1024
+	GameTooltip:SetWidth(math.min(440, math.max(280, screenWidth - 48)))
 	HideRules()
 	GameTooltip:ClearLines()
 	local what, tint, school = What(ability)
@@ -614,7 +612,7 @@ local function WriteItem(item)
 			ItemLine(item.after[index])
 		end
 	end
-	GameTooltip:Show()
+	FitTooltipWidth(GameTooltip)
 	WrapTooltipLines(GameTooltip)
 	GameTooltip:Show()
 	PlaceCharacterItemTooltip()
@@ -773,7 +771,10 @@ GameTooltip:SetScript("OnShow", function()
 		SurvivorUI_HideDuplicateSpellTooltips()
 	end
 	StyleTooltip(GameTooltip)
-	if GameTooltip.bordoCharacterItemActive then
+	if GameTooltip.bordoBuildTooltipActive then
+		local screenWidth = UIParent and UIParent:GetWidth() or 1024
+		GameTooltip:SetWidth(math.min(440, math.max(280, screenWidth - 48)))
+	else
 		FitTooltipWidth(GameTooltip)
 	end
 	WrapTooltipLines(GameTooltip)
@@ -785,6 +786,40 @@ GameTooltip:SetScript("OnShow", function()
 	end
 end)
 
+local stockSetUnit = GameTooltip.SetUnit
+if stockSetUnit then
+	GameTooltip.SetUnit = function(self, unit)
+		self.bordoBuildTooltipActive = nil
+		local val = stockSetUnit(self, unit)
+		StyleTooltip(self)
+		FitTooltipWidth(self)
+		WrapTooltipLines(self)
+		return val
+	end
+end
+local stockSetUnitBuff = GameTooltip.SetUnitBuff
+if stockSetUnitBuff then
+	GameTooltip.SetUnitBuff = function(self, unit, buffIndex, filter)
+		self.bordoBuildTooltipActive = nil
+		local val = stockSetUnitBuff(self, unit, buffIndex, filter)
+		StyleTooltip(self)
+		FitTooltipWidth(self)
+		WrapTooltipLines(self)
+		return val
+	end
+end
+local stockSetUnitDebuff = GameTooltip.SetUnitDebuff
+if stockSetUnitDebuff then
+	GameTooltip.SetUnitDebuff = function(self, unit, debuffIndex, filter)
+		self.bordoBuildTooltipActive = nil
+		local val = stockSetUnitDebuff(self, unit, debuffIndex, filter)
+		StyleTooltip(self)
+		FitTooltipWidth(self)
+		WrapTooltipLines(self)
+		return val
+	end
+end
+
 if ItemRefTooltip then
 	local stockItemRefShow = ItemRefTooltip:GetScript("OnShow")
 	ItemRefTooltip:SetScript("OnShow", function()
@@ -792,5 +827,7 @@ if ItemRefTooltip then
 			stockItemRefShow()
 		end
 		StyleTooltip(ItemRefTooltip)
+		FitTooltipWidth(ItemRefTooltip)
+		WrapTooltipLines(ItemRefTooltip)
 	end)
 end

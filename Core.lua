@@ -5,28 +5,31 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.8.17";
--- Unit & Mob Tooltip: Anchor world/unit/add tooltips to bottom-right (or custom position)
+BordoUI.version = "2.8.18";
+-- Unit & Mob Tooltip: Anchor world/unit/add tooltips to bottom row next to chat (or custom position)
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
 tipAnchor:SetHeight(80);
-tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
+tipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
 tipAnchor:SetMovable(true);
 tipAnchor:SetClampedToScreen(true);
 tipAnchor:EnableMouse(false);
 BordoUI.tipAnchor = tipAnchor;
+SurvivorUITooltipAnchor = tipAnchor;
 local function PlaceTooltip(tooltip)
 	if ( not tooltip ) then return; end
 	if ( BordoUI and BordoUI.IsWindowEnabled and not BordoUI:IsWindowEnabled("tooltip") ) then
 		tooltip:Hide();
 		return;
 	end
-	tooltip:ClearAllPoints();
 	if ( BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point ) then
-		BordoUI:RestorePosition(tooltip, BordoUIDB.tooltipPos);
+		BordoUI:RestorePosition(tipAnchor, BordoUIDB.tooltipPos);
 	else
-		tooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
+		tipAnchor:ClearAllPoints();
+		tipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
 	end
+	tooltip:ClearAllPoints();
+	tooltip:SetPoint("BOTTOMLEFT", tipAnchor, "BOTTOMLEFT", 0, 0);
 end
 local orig_GameTooltip_SetDefaultAnchor = GameTooltip_SetDefaultAnchor;
 function GameTooltip_SetDefaultAnchor(tooltip, parent)
@@ -65,6 +68,9 @@ local defaults = {
     tallyPos = nil, -- Defaults to centered under combat HUD
     microDockPos = nil, -- Defaults to bottom-right corner
     chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
+    tooltipPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 406, y = 26 },
+    meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 26, isCustom = true },
+    partyMeterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -242, y = 26, isCustom = true },
     partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 },
     showParty = true,
     chestArrow = true,
@@ -83,6 +89,10 @@ local function InitDB()
         if ( BordoUIDB[k] == nil ) then
             BordoUIDB[k] = v;
         end
+    end
+    -- Upgrade legacy default tooltipPos (from old -12, 26 bottom-right anchor to new 406, 26 bottom-left anchor next to Chat)
+    if ( BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point == "BOTTOMRIGHT" and BordoUIDB.tooltipPos.x == -12 and BordoUIDB.tooltipPos.y == 26 ) then
+        BordoUIDB.tooltipPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 406, y = 26 };
     end
     -- Clean up legacy HUD positions (e.g. old BOTTOM y=200 anchor that pushed HUD down to bottom)
     local defaultHudPos = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -170 };
@@ -1560,7 +1570,7 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.bottomBarPos = nil;
     BordoUIDB.tallyPos = nil;
     BordoUIDB.microDockPos = nil;
-    BordoUIDB.tooltipPos = nil;
+    BordoUIDB.tooltipPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 406, y = 26 };
     BordoUIDB.lootAlertPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -175 };
     BordoUIDB.multPanelPos = nil;
     BordoUIDB.nameplatesFramePos = nil;
@@ -1570,16 +1580,16 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.buildPos = nil;
     BordoUIDB.buildLeft = nil;
     BordoUIDB.buildTop = nil;
-    BordoUIDB.meterPos = nil;
-    BordoUIDB.meterIsCustom = nil;
-    BordoUIDB.meterWidth = nil;
-    BordoUIDB.meterLines = nil;
+    BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 26, isCustom = true };
+    BordoUIDB.meterIsCustom = true;
+    BordoUIDB.meterWidth = 224;
+    BordoUIDB.meterLines = 6;
     BordoUIDB.meterRight = nil;
     BordoUIDB.meterBottom = nil;
-    BordoUIDB.meterScale = nil;
-    BordoUIDB.partyMeterPos = nil;
-    BordoUIDB.partyMeterIsCustom = nil;
-    BordoUIDB.partyMeterScale = nil;
+    BordoUIDB.meterScale = 1.0;
+    BordoUIDB.partyMeterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -242, y = 26, isCustom = true };
+    BordoUIDB.partyMeterIsCustom = true;
+    BordoUIDB.partyMeterScale = 1.0;
     BordoUIDB.hudScale = nil;
     BordoUIDB.statsScale = nil;
     BordoUIDB.bossTrackerScale = nil;
@@ -1621,7 +1631,7 @@ function BordoUI:ResetToDefaultLayout()
     end
 	if ( BordoUI_TooltipAnchor ) then
 		BordoUI_TooltipAnchor:ClearAllPoints();
-		BordoUI_TooltipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26);
+		BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
 	end
     if ( BordoUI_ResetThemeUI ) then BordoUI_ResetThemeUI(); end
     if ( StatsUI and StatsUI.ResetPosition ) then StatsUI:ResetPosition(); end

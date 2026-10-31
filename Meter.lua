@@ -235,7 +235,11 @@ FitParty = function()
 		end
 	end
 	partyMeter:ClearAllPoints()
-	partyMeter:SetPoint("TOPLEFT", meter, "BOTTOMLEFT", 0, -6)
+	if meter and meter:IsShown() then
+		partyMeter:SetPoint("BOTTOMRIGHT", meter, "BOTTOMLEFT", -6, 0)
+	else
+		partyMeter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -242, 26)
+	end
 end
 
 function BordoUI_SetMeterScale(scale)
@@ -383,27 +387,9 @@ Fit = function()
 		end
 	end
 
-	-- 2. Default (Clean Install / Reset / Standard Layout): Dock directly underneath SurvivorUIBuild
-	local build = SurvivorUIBuild
-	if not build then
-		Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 40)
-		SetLines((BordoUIDB and BordoUIDB.meterLines) or MAX_LINES)
-		return
-	end
-
-	Seat(build:GetName(), "TOPRIGHT", build, "BOTTOMRIGHT", 0, -10)
-	if BordoUIDB and BordoUIDB.meterLines then
-		SetLines(BordoUIDB.meterLines)
-	else
-		local bBottom = build:GetBottom()
-		if bBottom then
-			local room = bBottom * build:GetEffectiveScale() / meter:GetEffectiveScale() - 10 - 8
-			local fit = math.floor((room - BARS_TOP - 4) / (BAR_HEIGHT + BAR_GAP))
-			SetLines(math.max(3, math.min(MAX_LINES, fit)))
-		else
-			SetLines(MAX_LINES)
-		end
-	end
+	-- 2. Default (Clean Install / Reset / Standard Layout): Dock at bottom-right corner (flush with bottom row)
+	Seat("screen_default", "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26)
+	SetLines((BordoUIDB and BordoUIDB.meterLines) or 6)
 end
 
 -- Resize Corner Grip (Bottom-Right)
@@ -1938,10 +1924,15 @@ end
 
 function BordoUI_ResetPartyMeterPosition()
 	BordoUIDB = BordoUIDB or {}
-	BordoUIDB.partyMeterPos = nil
-	BordoUIDB.partyMeterIsCustom = nil
-	partyMeter:ClearAllPoints()
-	partyMeter:SetPoint("TOPLEFT", meter, "BOTTOMLEFT", 0, -6)
+	BordoUIDB.partyMeterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -242, y = 26, isCustom = true }
+	BordoUIDB.partyMeterIsCustom = true
+	BordoUIDB.partyMeterScale = 1.0
+	if partyMeter then
+		partyMeter:SetScale(1.0)
+		partyMeter:ClearAllPoints()
+		partyMeter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -242, 26)
+		FitParty()
+	end
 end
 
 local function OtherLines(get)
@@ -2247,24 +2238,26 @@ end
 
 function BordoUI_ResetMeterPosition()
 	BordoUIDB = BordoUIDB or {}
-	BordoUIDB.meterPos = nil
-	BordoUIDB.meterIsCustom = nil
-	BordoUIDB.meterWidth = nil
-	BordoUIDB.meterLines = nil
+	BordoUIDB.meterPos = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMRIGHT", x = -12, y = 26, isCustom = true }
+	BordoUIDB.meterIsCustom = true
+	BordoUIDB.meterWidth = WIDTH
+	BordoUIDB.meterLines = 6
 	BordoUIDB.meterRight = nil
 	BordoUIDB.meterBottom = nil
 	BordoUIDB.meterScale = 1.0
 	local settings = Settings()
 	if settings then
-		settings.meterPos = nil
+		settings.meterPos = BordoUIDB.meterPos
 		settings.meterRight = nil
 		settings.meterBottom = nil
 	end
-	seatedOn = nil
+	seatedOn = "custom_-12_26"
 	if meter then
 		meter:SetScale(1.0)
 		UpdateMeterWidth(WIDTH)
-		SetLines(MAX_LINES)
+		SetLines(6)
+		meter:ClearAllPoints()
+		meter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26)
 		Fit()
 	end
 	if BordoUI_ResetPartyMeterPosition then
@@ -2272,11 +2265,9 @@ function BordoUI_ResetMeterPosition()
 	end
 end
 
--- The game's tooltip for units and the world: it opens at an anchor of its own
--- that Alt can move. Left where it is, the anchor sits beside the meter, on its
--- left, bottoms together (the tooltip's stock corner is where the meter is), or
--- in that corner when the meter is off.
-local tipAnchor = CreateFrame("Frame", "SurvivorUITooltipAnchor", UIParent)
+-- The game's tooltip for units and the world: anchored beside Chat (or custom position)
+local tipAnchor = (BordoUI and BordoUI.tipAnchor) or getglobal("BordoUI_TooltipAnchor") or CreateFrame("Frame", "SurvivorUITooltipAnchor", UIParent)
+SurvivorUITooltipAnchor = tipAnchor
 tipAnchor:SetWidth(200)
 tipAnchor:SetHeight(80)
 tipAnchor:SetMovable(true)
@@ -2289,14 +2280,16 @@ local function PlaceTipAnchor()
 	if BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point and BordoUI and BordoUI.RestorePosition then
 		BordoUI:RestorePosition(tipAnchor, BordoUIDB.tooltipPos)
 	else
-		tipAnchor:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 26)
+		tipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26)
 	end
 end
 
 local function SaveTipAnchor()
 	local settings = Settings()
-	settings.tipRight = math.floor(tipAnchor:GetRight() + 0.5)
-	settings.tipBottom = math.floor(tipAnchor:GetBottom() + 0.5)
+	if settings then
+		settings.tipRight = math.floor(tipAnchor:GetRight() + 0.5)
+		settings.tipBottom = math.floor(tipAnchor:GetBottom() + 0.5)
+	end
 end
 
 local stockDefaultAnchor = GameTooltip_SetDefaultAnchor
@@ -2310,7 +2303,7 @@ if stockDefaultAnchor then
 		if tooltip then
 			PlaceTipAnchor()
 			tooltip:ClearAllPoints()
-			tooltip:SetPoint("BOTTOMRIGHT", tipAnchor, "BOTTOMRIGHT", 0, 0)
+			tooltip:SetPoint("BOTTOMLEFT", tipAnchor, "BOTTOMLEFT", 0, 0)
 		end
 	end
 end
